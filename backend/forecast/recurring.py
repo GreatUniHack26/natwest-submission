@@ -47,6 +47,36 @@ def occurrences(item: Recurring, start: dt.date, end: dt.date):
         day = add_month(day, anchor) if item._monthly else day + dt.timedelta(days=item.every_days)
 
 
+def _nearest_month_day(day: dt.date, anchor: int) -> dt.date:
+    candidates = []
+    for offset in (-1, 0, 1):
+        year, month0 = divmod(day.year * 12 + day.month - 1 + offset, 12)
+        if 1 <= year <= 9999:
+            candidates.append(dt.date(year, month0 + 1,
+                              min(anchor, calendar.monthrange(year, month0 + 1)[1])))
+    return min(candidates, key=lambda due: (abs((day - due).days), due))
+
+
+def _monthly_schedule(observations: list[Transaction]) -> tuple[int, dt.date] | None:
+    """Fit clamped calendar dates, assigning early/late posts to their due month."""
+    dates = [t.date for t in observations]
+    # Adjacent monthly dates differ by 28..31 days, with up to three days' jitter each.
+    if any(not 22 <= (b - a).days <= 37 for a, b in zip(dates, dates[1:])):
+        return None
+    center = median(day.day for day in dates)
+    candidates = []
+    for anchor in range(1, 32):
+        assigned = [_nearest_month_day(day, anchor) for day in dates]
+        slots = [day.year * 12 + day.month for day in assigned]
+        errors = [abs((actual - due).days) for actual, due in zip(dates, assigned)]
+        if max(errors) <= 3 and all(b == a + 1 for a, b in zip(slots, slots[1:])):
+            candidates.append(((sum(errors), abs(anchor - center), anchor), assigned[-1]))
+    if not candidates:
+        return None
+    score, last_due = min(candidates)
+    return score[2], last_due
+
+
 def patterns(transactions: list[Transaction]) -> list[tuple[Recurring, list[Transaction]]]:
     groups = defaultdict(list)
     for tx in transactions:
@@ -75,11 +105,10 @@ def patterns(transactions: list[Transaction]) -> list[tuple[Recurring, list[Tran
             elif income and all(gap == 28 for gap in gaps):
                 # Four-weekly benefits are not calendar-month income.
                 every, due, anchor = 28, candidate[-1].date + dt.timedelta(days=28), None
-            elif all(abs((b.date - add_month(a.date)).days) <= 3 for a, b in zip(candidate, candidate[1:])):
+            elif (schedule := _monthly_schedule(candidate)) is not None:
                 every, monthly = 30, True
-                month_end = (len({t.date.day for t in candidate}) > 1 or candidate[0].date.day == 31) and all(abs((t.date - dt.date(t.date.year, t.date.month, calendar.monthrange(t.date.year, t.date.month)[1])).days) <= 3 for t in candidate)
-                anchor = 31 if month_end else round(median(t.date.day for t in candidate))
-                due = add_month(candidate[-1].date, anchor)
+                anchor, last_due = schedule
+                due = add_month(last_due, anchor)
             elif income and all(1 <= gap <= 45 for gap in gaps) and max(gaps) <= 3 * min(gaps):
                 # Irregular shifts: mean observed cadence and mean receipt; no guarantee.
                 every = max(1, round(mean(gaps)))
@@ -109,12 +138,17 @@ def amount_std(observations: list[Transaction]) -> float:
 
 
 def payment_std(item: Recurring, observations: list[Transaction]) -> float:
-    """Income timing uncertainty is approximated as receipt × gap CV."""
+    """Receipt × relative timing variation; monthly dates remove calendar clamping."""
     amount_variance = amount_std(observations) ** 2
     if item.amount <= 0:
         return math.sqrt(amount_variance)
     dates = sorted(t.date for t in observations)
     gaps = [(b - a).days for a, b in zip(dates, dates[1:])]
-    # Calendar month lengths are known, not uncertain timing.
-    timing_std = 0 if item._monthly else pstdev(gaps) / mean(gaps) * item.amount
+    if item._monthly:
+        # Known calendar/clamping changes are certain; posted-date jitter is not.
+        deviations = [(day - _nearest_month_day(day, item._month_day)).days for day in dates]
+        timing_variation = pstdev(deviations)
+    else:
+        timing_variation = pstdev(gaps)
+    timing_std = timing_variation / mean(gaps) * item.amount
     return math.sqrt(amount_variance + timing_std ** 2)
