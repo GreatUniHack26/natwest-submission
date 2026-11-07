@@ -8,7 +8,22 @@ from backend import config
 from backend.agent import voice
 from backend.api import agent_routes, data_routes, forecast_routes, household_routes, voice_routes
 
-app = FastAPI(title="FinTime API")
+app = FastAPI(title="Nat API")
+
+
+@app.on_event("startup")
+def _seed_if_empty() -> None:
+    """Demo safety: in real-data mode, build the persona database on first start (Sam, Alex, Pete, Maya & Dan)."""
+    if config.MOCK_DATA:
+        return
+    try:
+        from backend.data import repository
+
+        repository.get_user("pete")
+    except Exception:
+        from backend.data.seed import seed
+
+        seed()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 app.include_router(data_routes.router)
