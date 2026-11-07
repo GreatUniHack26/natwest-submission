@@ -1,0 +1,84 @@
+.household-panel {
+  grid-column: 1 / -1;
+}
+
+.household-demo-note,
+.household-description {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.household-demo-note {
+  margin-top: 0.375rem;
+}
+
+.household-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  grid-template-areas: "spending forecast" "categories forecast" "members members";
+  gap: 1.5rem 2rem;
+  margin-top: 1.25rem;
+}
+
+.household-layout h3 {
+  margin: 0 0 0.5rem;
+  color: var(--text);
+  font-size: 1.0625rem;
+}
+
+.household-spending { grid-area: spending; }
+.household-forecast { grid-area: forecast; }
+.household-categories { grid-area: categories; }
+.household-members { grid-area: members; }
+
+.household-spending .spending-amount {
+  margin-bottom: 0.375rem;
+}
+
+.household-totals {
+  margin-top: 0.75rem;
+}
+
+.household-totals > div,
+.household-members .grouped-list > li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.75rem;
+}
+
+.household-totals > div {
+  padding-block: 0.625rem;
+  border-top: 1px solid var(--line);
+}
+
+.household-totals dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.household-totals dd {
+  font-weight: 650;
+}
+
+.household-status {
+  padding: 0.25rem 0.625rem;
+  border-radius: 1rem;
+  background: var(--tab-surface);
+  color: var(--plum);
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.household-status[data-review="true"] {
+  background: var(--warning-surface);
+  color: var(--warning);
+}
+
+@media (max-width: 46rem) {
+  .household-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "spending" "forecast" "categories" "members";
+  }
+}

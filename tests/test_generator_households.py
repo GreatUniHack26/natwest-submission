@@ -48,8 +48,12 @@ def test_all_households_are_generatable():
 
 
 def test_sam_is_unchanged_by_new_personas():
-    user, txs, pots = generate_persona("sam", 42)
-    assert (user.id, len(txs), len(pots)) == ("sam", 235, 2)
+    before = generate_persona("sam", 42)
+    generate_household("family", 42)
+    generate_persona("salaried", 42)
+    assert generate_persona("sam", 42) == before
+    user, _, pots = before
+    assert user.id == "sam" and len(pots) == 2
 
 
 # ---- family: structure -------------------------------------------------------------

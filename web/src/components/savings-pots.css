@@ -1,0 +1,87 @@
+.savings-pot-row > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pots-actions {
+  margin-top: 0.75rem;
+}
+
+.pots-button {
+  min-height: 2.75rem;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.pots-button-secondary {
+  color: var(--plum);
+  background: var(--tab-surface);
+}
+
+.pots-button-secondary:hover:not(:disabled) { background: var(--tab-hover); }
+.pots-button-primary { color: var(--on-plum); background: var(--plum); }
+.pots-button-primary:hover:not([aria-disabled="true"]) { background: var(--tint); }
+
+.pots-button:disabled,
+.pots-button[aria-disabled="true"] {
+  color: var(--muted);
+  background: var(--inset);
+  cursor: wait;
+}
+
+.pots-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.875rem;
+  padding: 0.875rem;
+  border-radius: 0.75rem;
+  background: var(--inset);
+}
+
+.pots-field {
+  display: grid;
+  flex: 1 1 8rem;
+  align-content: start;
+  gap: 0.25rem;
+  min-width: 0;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.pots-field-wide { flex: 1 1 100%; }
+.pots-optional { color: var(--muted); font-weight: 400; }
+
+.pots-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid color-mix(in srgb, var(--plum) 38%, var(--control-line));
+  border-radius: 0.625rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.pots-field input[aria-invalid="true"] { border-color: var(--danger); }
+.pots-error { color: var(--danger); font-size: 0.8125rem; font-weight: 550; }
+
+.pots-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 0.5rem;
+}
+
+.pots-notice {
+  color: var(--plum);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.pots-notice:not(:empty) { margin-top: 0.5rem; }

@@ -13,15 +13,16 @@ from .inputs import load_inputs
 from .money import pence, pounds
 from .pots import safe_from_inputs
 from .recurring import patterns
-from .reservations import bill_schedule, protected_on
+from .reservations import bill_schedule, protected_on, remaining_pots
 from .sales import CalendarUnavailable, upcoming_sales
 
 
 def risk_onsets(data, daily):
     bills = bill_schedule([item for item, _ in patterns(data.transactions)], data.as_of + dt.timedelta(days=1), daily[-1].date)
+    pots = remaining_pots(data.pots, data.transactions, data.as_of)
     onsets = {}
     for point in daily:
-        protected = protected_on(data.pots, bills, point.date)
+        protected = protected_on(pots, bills, point.date)
         for kind, condition in [('expected', point.expected < 0), ('low', point.low < 0),
                                 ('pots', protected > 0 and pence(point.expected) < protected)]:
             if condition:

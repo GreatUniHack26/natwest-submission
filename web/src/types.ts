@@ -29,3 +29,19 @@ export interface Alert {
 }
 export interface Pot { id: string; user_id: string; name: string; amount: number; due_date: string | null }
 export interface ChatReply { text: string; numbers_used: Record<string, number>; audio_url: string | null }
+export interface PurchaseVerdict {
+  affordable: boolean;
+  safe_after: number;
+  better_date: string | null;
+  reason: string;
+  numbers_used: Record<string, number>;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  persona: string;
+  region: string;
+  household_id: string | null;
+  tone: Tone;
+}

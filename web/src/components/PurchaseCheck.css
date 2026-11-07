@@ -1,0 +1,86 @@
+.purchase-check-intro, .purchase-check-status, .purchase-check-error {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.purchase-check-intro { margin-top: 0.375rem; }
+
+.purchase-check-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.875rem;
+}
+
+.purchase-check-form label {
+  display: grid;
+  gap: 0.375rem;
+  width: min(100%, 13rem);
+  color: var(--plum);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.purchase-check-amount {
+  display: flex;
+  align-items: center;
+  padding-inline-start: 0.75rem;
+  border: 1px solid var(--control-line);
+  border-radius: 0.625rem;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.purchase-check-amount input {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding-inline: 0.375rem 0.75rem;
+  border: 0;
+  border-radius: 0.625rem;
+  color: var(--text);
+  background: transparent;
+  font-size: 1rem;
+}
+
+.purchase-check-submit {
+  min-height: 2.75rem;
+  padding: 0.375rem 0.875rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: var(--tint);
+  color: var(--on-plum);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.purchase-check-submit:not(:disabled):hover,
+.purchase-check-submit:not(:disabled):active { background: var(--plum); }
+.purchase-check-submit:disabled { background: var(--tab-surface); color: var(--muted); }
+.purchase-check-status, .purchase-check-error { margin-top: 0.75rem; }
+.purchase-check-error { color: var(--danger); }
+
+.purchase-check-result {
+  margin-top: 0.875rem;
+  padding: 0.75rem;
+  border-radius: 0.625rem;
+  background: var(--inset);
+  font-size: 0.875rem;
+}
+
+.purchase-check-result h3 { margin: 0; color: var(--plum); font-size: 1rem; }
+.purchase-check-result[data-affordable="false"] h3 { color: var(--danger); }
+.purchase-check-result p { margin-top: 0.375rem; }
+.purchase-check-result dl { margin-top: 0.625rem; }
+
+.purchase-check-result dl div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.125rem 0.75rem;
+  padding-block: 0.375rem;
+  border-top: 1px solid var(--line);
+}
+
+.purchase-check-result dd { font-weight: 650; }

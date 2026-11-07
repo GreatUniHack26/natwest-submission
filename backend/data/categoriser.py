@@ -1,6 +1,7 @@
 """P1: need/want categorisation. Rules first, cached LLM only for unknown merchants.
 
 Pre-compute labels (don't call the LLM live in the demo):
+  0. User overrides (passed in; stored by the repository) beat everything below.
   1. Income (amount > 0) is always kind='income'.
   2. RULES match on whole words in the merchant name (so 'tfl' never hits 'Netflix').
   3. Unknown merchants are looked up in the on-disk cache (label_cache.json, committed so
@@ -52,6 +53,7 @@ RULES: dict[str, tuple[str, str]] = {
     "little stars club": ("childcare", "need"),
     "primary school": ("school", "need"),
     "provident loan": ("debt", "need"),
+    "course fee": ("education", "need"),
     # eating out
     "deliveroo": ("eating out", "want"),
     "greggs": ("eating out", "want"),
@@ -160,11 +162,19 @@ def llm_label(merchants: list[str]) -> dict[str, tuple[str, str]]:
     }
 
 
-def categorise(transactions: list[Transaction]) -> list[Transaction]:
-    """Return copies with category/kind set. Pure apart from the label cache on disk."""
+def categorise(
+    transactions: list[Transaction],
+    overrides: dict[str, tuple[str, str]] | None = None,
+) -> list[Transaction]:
+    """Return copies with category/kind set. Pure apart from the label cache on disk.
+
+    `overrides` maps transaction id -> (category, kind) and beats everything else (income
+    sign, rules, cache, LLM). Overridden transactions are never sent to the LLM.
+    """
+    overrides = overrides or {}
     unknown: dict[str, str] = {}  # cache key -> merchant as first seen
     for t in transactions:
-        if t.amount <= 0 and _rule_label(t.merchant) is None:
+        if t.id not in overrides and t.amount <= 0 and _rule_label(t.merchant) is None:
             unknown.setdefault(_key(t.merchant), t.merchant)
 
     labels: dict[str, tuple[str, str]] = {}
@@ -181,7 +191,9 @@ def categorise(transactions: list[Transaction]) -> list[Transaction]:
 
     out = []
     for t in transactions:
-        if t.amount > 0:
+        if t.id in overrides:
+            category, kind = overrides[t.id]
+        elif t.amount > 0:
             category, kind = "income", "income"
         else:
             category, kind = _rule_label(t.merchant) or labels.get(_key(t.merchant), FALLBACK)
