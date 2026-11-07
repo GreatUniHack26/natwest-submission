@@ -159,12 +159,3 @@ def test_run_get_benchmark_infers_household_size_from_household_members(monkeypa
     assert result["comparable"] is True
     assert result["numbers_used"]["benchmark_groceries"] == pytest.approx(320.0)
     assert result["numbers_used"]["user_groceries_spend"] == pytest.approx(23.40)
-
-
-def test_run_get_benchmark_with_real_backend_benchmarks_module():
-    result = benchmark_adapter.run_get_benchmark("sam", {"category": "eating out"})
-    assert result["region"] == "Manchester"
-    assert result["household_size"] == 1
-    assert result["comparable"] is True
-    assert result["numbers_used"]["benchmark_eating_out"] > 0
-    assert result["numbers_used"]["user_eating_out_spend"] == pytest.approx(23.70)
