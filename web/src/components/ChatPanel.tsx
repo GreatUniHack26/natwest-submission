@@ -58,12 +58,17 @@ function FiguresUsed({ figures }: { figures: ChatReply["numbers_used"] }) {
   );
 }
 
-type ReplyBlock = { kind: "p"; text: string } | { kind: "ul"; items: string[] };
+type ReplyBlock =
+  | { kind: "verdict"; text: string }
+  | { kind: "p"; text: string }
+  | { kind: "ul"; items: string[] }
+  | { kind: "next"; text: string };
 
 const BULLET = /^\s*[-•*]\s+/;
+const NEXT = /^\s*next\s*:\s*/i;
 
-/** Split reply text into paragraphs and bullet lists. Plain text only, so React escapes everything. */
-function replyBlocks(text: string): ReplyBlock[] {
+/** Split reply text into a verdict, paragraphs, bullet lists and a "Next:" action. Plain text only, so React escapes everything. */
+function replyBlocks(text: string, structured: boolean): ReplyBlock[] {
   const blocks: ReplyBlock[] = [];
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
@@ -73,6 +78,10 @@ function replyBlocks(text: string): ReplyBlock[] {
       const item = line.replace(BULLET, "");
       if (last?.kind === "ul") last.items.push(item);
       else blocks.push({ kind: "ul", items: [item] });
+    } else if (structured && NEXT.test(line)) {
+      blocks.push({ kind: "next", text: line.replace(NEXT, "") });
+    } else if (structured && blocks.length === 0) {
+      blocks.push({ kind: "verdict", text: line });
     } else {
       blocks.push({ kind: "p", text: line });
     }
@@ -80,12 +89,39 @@ function replyBlocks(text: string): ReplyBlock[] {
   return blocks;
 }
 
-function ReplyText({ text }: { text: string }) {
+/** Highlight money, percentages and day counts inside a sentence. */
+function Figures({ text }: { text: string }) {
+  const parts = text.split(/(-?£[\d,]+(?:\.\d+)?|\d+(?:\.\d+)?%|\b\d+ days?\b)/g);
+  return <>{parts.map((part, i) => (i % 2 ? <strong key={i} className="chat-figure">{part}</strong> : part))}</>;
+}
+
+function verdictTone(text: string) {
+  const t = text.toLowerCase();
+  if (/^(no|not)\b/.test(t)) return "no";
+  if (/^yes\b/.test(t)) return "yes";
+  return "info";
+}
+
+function ReplyText({ text, structured = false }: { text: string; structured?: boolean }) {
+  const blocks = replyBlocks(text, structured);
   return (
-    <div className="chat-reply" dir="auto">
-      {replyBlocks(text).map((block, index) => block.kind === "ul"
-        ? <ul key={index}>{block.items.map((item, i) => <li key={i} dir="auto">{item}</li>)}</ul>
-        : <p key={index} dir="auto">{block.text}</p>)}
+    <div className="chat-reply" dir="auto" data-structured={structured}>
+      {blocks.map((block, index) => {
+        if (block.kind === "verdict") {
+          return <p key={index} className="chat-verdict" data-tone={verdictTone(block.text)} dir="auto">{block.text}</p>;
+        }
+        if (block.kind === "ul") {
+          return (
+            <ul key={index} className={structured ? "chat-why" : undefined}>
+              {block.items.map((item, i) => <li key={i} dir="auto"><Figures text={item} /></li>)}
+            </ul>
+          );
+        }
+        if (block.kind === "next") {
+          return <p key={index} className="chat-next" dir="auto"><span>Next</span><Figures text={block.text} /></p>;
+        }
+        return <p key={index} dir="auto"><Figures text={block.text} /></p>;
+      })}
     </div>
   );
 }
@@ -209,7 +245,7 @@ export default function ChatPanel({ userId, sampleReply = false }: { userId: str
             <p className="chat-question" dir="auto">{exchange.question}</p>
             {exchange.status === "answered" && (
               <div className="chat-answer">
-                <ReplyText text={exchange.reply.text} />
+                <ReplyText text={exchange.reply.text} structured={exchange.detail === "concise"} />
                 <FiguresUsed figures={exchange.reply.numbers_used} />
               </div>
             )}

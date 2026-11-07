@@ -144,3 +144,26 @@
 @media (prefers-reduced-motion: reduce) {
   .detail-option span { transition: none; }
 }
+
+/* Concise replies: verdict, why, next */
+.chat-reply[data-structured="true"] { display: grid; gap: 0.5rem; }
+.chat-verdict {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-family: var(--font-display); font-size: 1.0625rem; font-weight: 700; color: var(--text);
+}
+.chat-verdict::before {
+  flex: none; display: grid; place-items: center; width: 1.375rem; height: 1.375rem; border-radius: 50%;
+  font-size: 0.8125rem; font-weight: 800; color: #FFFFFF; background: var(--tint); content: "i";
+}
+.chat-verdict[data-tone="yes"]::before { content: "✓"; background: var(--c-success); }
+.chat-verdict[data-tone="no"]::before { content: "!"; background: var(--c-danger); }
+.chat-why { margin: 0; padding-inline-start: 1.125rem; display: grid; gap: 0.25rem; }
+.chat-why li::marker { color: var(--tint); }
+.chat-figure { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.chat-next {
+  display: flex; gap: 0.5rem; align-items: baseline; padding: 0.5rem 0.75rem; border-radius: 0.75rem;
+  background: var(--c-lavender); color: var(--text);
+}
+.chat-next span {
+  flex: none; font-size: 0.75rem; font-weight: 800; color: var(--tint);
+}
