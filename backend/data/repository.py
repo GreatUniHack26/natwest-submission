@@ -163,13 +163,3 @@ def get_balance(user_id: str, as_of: dt.date) -> float:
     if not all(value.is_finite() for value in values):
         raise ValueError('Balance transactions must contain finite amounts')
     return float(sum(values, Decimal(0)).quantize(Decimal('.01'), rounding=ROUND_HALF_UP))
-
-
-def get_household_members(household_id: str) -> list[User]:
-    """Resolve stored membership; each account balance/pot has one user owner."""
-    if config.MOCK_DATA:
-        user = User(**mock.load('user'))
-        return [user] if user.household_id == household_id else []
-    with _connect() as conn:
-        rows = conn.execute('SELECT * FROM users WHERE household_id = ? ORDER BY id', (household_id,)).fetchall()
-    return [User(**dict(row)) for row in rows]
