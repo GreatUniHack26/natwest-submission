@@ -332,3 +332,100 @@
   .tt-fan, .tt-event, .tt-risk-pulse, .tt-whatif-result { animation: none !important; }
   .tt-median, .tt-scenario { animation: none !important; stroke-dasharray: none; stroke-dashoffset: 0; }
 }
+
+/* ---------- Screen layouts ---------- */
+.future-grid { display: grid; gap: 1.25rem; }
+.future-grid > .panel { min-width: 0; }
+.coach-screen { max-width: 52rem; margin-inline: auto; }
+.coach-screen > .panel { min-height: 60vh; }
+.tt[data-compact="true"] .tt-legend li:nth-child(n + 4) { display: none; }
+#forecast-preview .spending-link { margin-top: 0.25rem; }
+
+/* Home: two independent columns (no row gaps); phones stack in story order. */
+.dashboard-grid { grid-template-areas: none !important; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: start; }
+.dash-col { display: grid; gap: 1.25rem; align-content: start; min-width: 0; }
+.dash-col > .panel { grid-area: auto !important; }
+@media (max-width: 60rem) {
+  .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+  .dash-col { display: contents; }
+  #spending { order: 1; } #forecast-preview { order: 2; } #alerts { order: 3; } #pots { order: 4; }
+}
+
+/* ---------- Challenge layer: resilience strip + alarm banner ---------- */
+.resilience { display: grid; gap: 1rem; margin-bottom: 1.25rem; }
+.alarm-banner {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.875rem;
+  padding: 0.875rem 1rem; border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--warning-surface); animation: rise 500ms var(--ease-out) both;
+}
+.alarm-banner[data-severity="high"] { background: var(--danger-surface); border-color: var(--danger); }
+.alarm-banner-icon {
+  display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%;
+  background: var(--warning-fill); color: var(--text);
+}
+.alarm-banner[data-severity="high"] .alarm-banner-icon { background: var(--danger); color: var(--on-plum); animation: alarm-pulse 1.6s ease-out infinite; }
+.alarm-banner-icon svg { width: 1.25rem; height: 1.25rem; }
+.alarm-banner-kicker { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--warning); }
+.alarm-banner[data-severity="high"] .alarm-banner-kicker { color: var(--danger); }
+.alarm-banner-text { font-weight: 700; }
+.alarm-banner-action { font-size: 0.875rem; color: var(--muted); }
+.alarm-banner-cta {
+  display: inline-flex; align-items: center; gap: 0.25rem; min-height: 44px; padding: 0 1rem;
+  border-radius: 999px; background: var(--tint); color: var(--on-plum); font-weight: 700; white-space: nowrap;
+}
+.alarm-banner-cta svg { width: 1rem; height: 1rem; }
+
+.resilience-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.resilience-tiles li { animation: rise 500ms var(--ease-out) both; }
+.resilience-tiles li:nth-child(2) { animation-delay: 80ms; }
+.resilience-tiles li:nth-child(3) { animation-delay: 160ms; }
+.resilience-tiles li:nth-child(4) { animation-delay: 240ms; }
+.r-tile {
+  display: grid; gap: 0.25rem; height: 100%; padding: 1rem 1.125rem; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line);
+  transition: border-color var(--press), transform var(--press);
+}
+.r-tile:hover { border-color: var(--accent); }
+.r-tile:active { transform: scale(0.985); }
+.r-kicker { font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--tint); }
+.r-value { font-family: var(--font-display); font-size: 1.875rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+.r-value small { font-size: 1rem; font-weight: 700; color: var(--muted); }
+.r-label { font-size: 0.8125rem; color: var(--muted); }
+.r-tile[data-level="high"] .r-value { color: var(--danger); }
+.r-tile[data-level="high"] .r-value::before { content: "▲ "; font-size: 1rem; vertical-align: middle; }
+.r-tile[data-level="medium"] .r-value { color: var(--warning); }
+.r-tile[data-level="low"] .r-value, .r-tile[data-level="good"] .r-value { color: var(--safe); }
+.r-footnote { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); font-size: 0.8125rem; }
+.r-footnote svg { width: 1rem; height: 1rem; flex: none; color: var(--tint); }
+@media (max-width: 60rem) { .resilience-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 34rem) {
+  .alarm-banner { grid-template-columns: auto minmax(0, 1fr); }
+  .alarm-banner-cta { grid-column: 1 / -1; justify-content: center; }
+  .r-value { font-size: 1.5rem; }
+}
+
+/* ---------- Accessibility menu ---------- */
+.a11y { position: relative; margin-inline-start: auto; }
+.a11y-button {
+  min-width: 44px; min-height: 44px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--tint); font-family: var(--font-display); font-weight: 800;
+}
+.a11y-menu {
+  position: absolute; right: 0; top: calc(100% + 0.5rem); z-index: 50; width: 17rem;
+  display: grid; gap: 0.25rem; padding: 0.875rem; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line); box-shadow: 0 8px 24px rgb(60 16 83 / 14%);
+}
+.a11y-title { font-family: var(--font-display); font-weight: 700; margin-bottom: 0.25rem; }
+.a11y-menu label { display: flex; align-items: center; gap: 0.625rem; min-height: 44px; cursor: pointer; }
+.a11y-menu input { width: 1.125rem; height: 1.125rem; accent-color: var(--tint); }
+.a11y-link { min-height: 44px; display: flex; align-items: center; color: var(--tint); font-weight: 700; text-decoration: underline; }
+.a11y-note { font-size: 0.75rem; color: var(--muted); }
+
+html[data-text-size="large"] { font-size: 112.5%; }
+html[data-contrast="high"] { --muted: var(--c-text); --line: var(--c-text-2); --tab-surface: #FFFFFF; }
+html[data-contrast="high"] .panel, html[data-contrast="high"] .r-tile { border-width: 2px; }
+html[data-motion="reduce"] *, html[data-motion="reduce"] *::before, html[data-motion="reduce"] *::after {
+  animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important;
+}
+.toolbar-end { justify-self: end; display: flex; align-items: center; gap: 0.5rem; }
+.a11y { margin-inline-start: 0; }

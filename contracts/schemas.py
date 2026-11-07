@@ -121,6 +121,7 @@ class ChatRequest(BaseModel):
     message: str
     tone: Optional[Tone] = None
     history: list[ChatTurn] = Field(default_factory=list, max_length=20)
+    detail: Literal["concise", "detailed"] = "concise"  # reply length/shape for the text coach
 
 
 class ChatReply(BaseModel):

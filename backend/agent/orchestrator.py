@@ -1,6 +1,7 @@
 """P3: LLM tool-calling loop.
 
 1. Build system prompt = prompts/base.md + prompts/tone_<tone>.md (tone defaults to user's saved tone)
+   + prompts/detail_<concise|detailed>.md (reply shape) + live context
 2. Send user message + tools.TOOLS to the LLM (model pinned in config.LLM_MODEL)
 3. While the LLM requests a tool: tools.run_tool(...) and feed the result back
 4. Return ChatReply(text, numbers_used=<merged numbers_used from tool results>)
@@ -13,7 +14,7 @@ import math
 import os
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import httpx
 
@@ -24,6 +25,9 @@ from contracts.schemas import ChatReply, Tone
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 VALID_TONES: tuple[Tone, ...] = ("friendly", "direct", "simple")
 DEFAULT_TONE: Tone = "friendly"
+Detail = Literal["concise", "detailed"]
+VALID_DETAILS: tuple[Detail, ...] = ("concise", "detailed")
+DEFAULT_DETAIL: Detail = "concise"
 
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
@@ -70,6 +74,18 @@ def build_system_prompt(tone: Tone) -> str:
     base_text = (PROMPTS_DIR / "base.md").read_text(encoding="utf-8").strip()
     tone_text = (PROMPTS_DIR / f"tone_{tone}.md").read_text(encoding="utf-8").strip()
     return f"{base_text}\n\n{tone_text}"
+
+
+def build_detail_prompt(detail: Detail) -> str:
+    """Return prompts/detail_<detail>.md: reply shape (concise bullets or fuller paragraphs)."""
+    if detail not in VALID_DETAILS:
+        raise ValueError(f"Unsupported detail: {detail}")
+    return (PROMPTS_DIR / f"detail_{detail}.md").read_text(encoding="utf-8").strip()
+
+
+def _cache_key_message(message: str, detail: Detail) -> str:
+    """Keep concise and detailed replies apart in the reply cache (keyed by message + tone)."""
+    return message if detail == DEFAULT_DETAIL else f"[{detail}] {message}"
 
 
 def extract_numbers_used(result: Any) -> dict[str, float]:
@@ -259,19 +275,25 @@ def run_chat(
     message: str,
     tone: Optional[Tone] = None,
     history: Optional[list[dict[str, Any]]] = None,
+    *,
+    detail: Detail = DEFAULT_DETAIL,
 ) -> ChatReply:
     resolved_tone = resolve_tone(user_id, tone)
+    if detail not in VALID_DETAILS:
+        raise ValueError(f"Unsupported detail: {detail}")
+    cache_message = _cache_key_message(message, detail)
 
     # In explicit DEMO_MODE, serve snapshot-verified cached or deterministic tool-backed reply.
     if fallback.is_demo_mode():
-        cached = fallback.get_cached_reply(user_id, message, resolved_tone)
+        cached = fallback.get_cached_reply(user_id, cache_message, resolved_tone)
         if cached is not None:
             return _build_reply(cached.text, cached.numbers_used)
         demo_reply = fallback.build_fallback_reply(user_id, message, resolved_tone)
         if demo_reply is not None:
             return _build_reply(demo_reply.text, demo_reply.numbers_used)
 
-    system_prompt = build_system_prompt(resolved_tone)
+    # Base + tone, then the reply-mode section (it wins on length/shape), then live context.
+    system_prompt = f"{build_system_prompt(resolved_tone)}\n\n{build_detail_prompt(detail)}"
     live_context = _context_section(user_id)
     if live_context:
         system_prompt = f"{system_prompt}\n\n{live_context}"
@@ -296,7 +318,7 @@ def run_chat(
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
             if not had_tool_error and round_idx == 0:
-                cached = fallback.get_cached_reply(user_id, message, resolved_tone)
+                cached = fallback.get_cached_reply(user_id, cache_message, resolved_tone)
                 if cached is not None:
                     return _build_reply(cached.text, cached.numbers_used)
                 if isinstance(exc, httpx.ConnectError):
@@ -317,7 +339,7 @@ def run_chat(
                 return _build_reply(TOOL_FAILURE_APOLOGY, numbers_used)
             final_reply = _build_reply(reply_text, numbers_used)
             if not had_tool_error:
-                fallback.cache_reply(user_id, message, resolved_tone, final_reply)
+                fallback.cache_reply(user_id, cache_message, resolved_tone, final_reply)
             return final_reply
 
         # If a tool already failed in an earlier round and the LLM still does not return a final apology, stop cleanly.

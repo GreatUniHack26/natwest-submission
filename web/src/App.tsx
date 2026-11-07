@@ -11,6 +11,8 @@ import SavingsPots from "./components/SavingsPots";
 import DepositIdeas from "./components/DepositIdeas";
 import TwinOdds from "./components/TwinOdds";
 import TimeTravel from "./components/TimeTravel";
+import ResilienceStrip from "./components/ResilienceStrip";
+import AccessibilityMenu from "./components/AccessibilityMenu";
 import Landing from "./screens/Landing";
 import AffordScreen from "./screens/AffordScreen";
 import Transactions from "./screens/Transactions";
@@ -36,7 +38,7 @@ const sections = [
   { id: "overview", label: "Home", icon: "overview" },
   { id: "forecast", label: "Future", icon: "forecast" },
   { id: "afford", label: "Afford?", icon: "afford" },
-  { id: "coach", label: "Coach", icon: "coach" },
+  { id: "coach", label: "Nat", icon: "coach" },
   { id: "transactions", label: "Activity", icon: "activity" },
   { id: "tips", label: "Tips", icon: "tips" },
 ] as const;
@@ -154,7 +156,7 @@ function ProfileSummary({ profile, persona }: { profile: User; persona: Persona 
 const loadForecast = (userId: string, signal: AbortSignal) => api.forecast(userId, 56, signal);
 const riskLabels = { low: "Low risk", medium: "Medium risk", high: "High risk" } as const;
 
-function ForecastContent({ forecast, mockForecast, userId }: { forecast: Forecast; mockForecast: boolean; userId: string }) {
+function ForecastContent({ forecast, mockForecast, userId, compact = false }: { forecast: Forecast; mockForecast: boolean; userId: string; compact?: boolean }) {
   const [cursor, setCursor] = useState(0);
   const [selectedRiskDate, setSelectedRiskDate] = useState<string | null>(null);
   const [whatIfSettings, setWhatIfSettings] = useState<WhatIfSettings | null>(null);
@@ -166,6 +168,19 @@ function ForecastContent({ forecast, mockForecast, userId }: { forecast: Forecas
   function selectRisk(date: string) {
     setCursor(nearestPointIndex(forecast.points, date));
     setSelectedRiskDate(date);
+  }
+
+  if (compact && !mockForecast) {
+    return (
+      <>
+        <TimeTravel userId={userId} compact />
+        <a className="spending-link" href="#forecast">
+          <Icon name="forecast" />
+          Open your time machine: what-ifs and 1,000 futures
+          <Icon name="chevron" />
+        </a>
+      </>
+    );
   }
 
   return (
@@ -247,7 +262,10 @@ function ForecastContent({ forecast, mockForecast, userId }: { forecast: Forecas
   );
 }
 
-function Dashboard({ persona, mock, demoPots, onDemoPotAdded }: {
+type View = "home" | "future" | "coach";
+
+function Dashboard({ persona, mock, demoPots, onDemoPotAdded, view }: {
+  view: View;
   persona: Persona;
   mock?: ApiHealth["mock"];
   demoPots: Pot[];
@@ -270,7 +288,7 @@ function Dashboard({ persona, mock, demoPots, onDemoPotAdded }: {
   return (
     <>
       <div className="profile-summary">
-        <h1 ref={profileHeading} tabIndex={-1}>Your money</h1>
+        <h1 ref={profileHeading} tabIndex={-1}>{view === "future" ? "Time machine" : view === "coach" ? "Talk to Nat" : "Your money"}</h1>
         <div className="profile-line">
           <span className="profile-name">{name}</span>
           {request.status === "ready" ? <ProfileSummary profile={request.data} persona={persona} /> : (
@@ -288,49 +306,72 @@ function Dashboard({ persona, mock, demoPots, onDemoPotAdded }: {
           )}
         </div>
       </div>
-      <div className="dashboard-grid">
-        <ApiPanel id="spending" title="Safe to spend" userId={persona.id} load={api.safeToSpend} revision={potRevision}>
-          {(data) => {
-            const demoAdjustments = mock?.forecast ? visibleDemoPots : [];
-            return (
-              <>
-                <SafeToSpendCard data={previewSafeToSpend(data, demoAdjustments)} demoPreview={demoAdjustments.length > 0} />
-                {mock?.forecast && !mock.data && <p className="panel-empty">This amount uses the sample forecast.</p>}
-              </>
-            );
-          }}
-        </ApiPanel>
-        <ApiPanel id="forecast" title="Time travel" userId={persona.id} load={loadForecast} revision={forecastRevision}>
-          {(forecast) => <ForecastContent forecast={forecast} mockForecast={mock?.forecast === true} userId={persona.id} />}
-        </ApiPanel>
-        <ApiPanel id="pots" title="Savings pots" userId={persona.id} load={api.pots} revision={potRevision}>
-          {(pots) => (
-            <>
-              <SavingsPots
-                pots={mergeDemoPots(pots, visibleDemoPots)}
-                userId={persona.id}
-                onPotAdded={refreshAfterSave}
-                demoOnly={mock?.data}
-              />
-              {mock?.forecast === false && <DepositIdeas userId={persona.id} revision={potRevision} />}
-            </>
-          )}
-        </ApiPanel>
-        {mock?.forecast === false && (
-          <ApiPanel id="month" title="This month’s spending" userId={persona.id} load={api.spending} revision={potRevision}>
-            {(spending) => <SpendingForecast data={spending} />}
+      {view === "home" && mock?.forecast === false && <ResilienceStrip userId={persona.id} />}
+      {view === "home" && (
+        <div className="dashboard-grid">
+          <div className="dash-col dash-col-left">
+          <ApiPanel id="spending" title="Safe to spend" userId={persona.id} load={api.safeToSpend} revision={potRevision}>
+            {(data) => {
+              const demoAdjustments = mock?.forecast ? visibleDemoPots : [];
+              return (
+                <>
+                  <SafeToSpendCard data={previewSafeToSpend(data, demoAdjustments)} demoPreview={demoAdjustments.length > 0} />
+                  {mock?.forecast && !mock.data && <p className="panel-empty">This amount uses the sample forecast.</p>}
+                </>
+              );
+            }}
           </ApiPanel>
-        )}
-        <ApiPanel id="alerts" title="Alerts" userId={persona.id} load={api.alerts} revision={forecastRevision}>
-          {(alerts) => <AlertList alerts={alerts} />}
-        </ApiPanel>
-        {mock?.agent && !mock.data && !mock.forecast
-          ? <PurchaseCheck userId={persona.id} />
-          : <ChatPanel userId={persona.id} sampleReply={mock?.agent === true} />}
-      </div>
-      {persona.name === "Family" && <HouseholdPanel demo={mock?.data === true && mock.forecast} />}
+          <ApiPanel id="pots" title="Savings pots" userId={persona.id} load={api.pots} revision={potRevision}>
+            {(pots) => (
+              <>
+                <SavingsPots
+                  pots={mergeDemoPots(pots, visibleDemoPots)}
+                  userId={persona.id}
+                  onPotAdded={refreshAfterSave}
+                  demoOnly={mock?.data}
+                />
+                {mock?.forecast === false && <DepositIdeas userId={persona.id} revision={potRevision} />}
+              </>
+            )}
+          </ApiPanel>
+          </div>
+          <div className="dash-col dash-col-right">
+          <ApiPanel id="forecast-preview" title="Your time machine" userId={persona.id} load={loadForecast} revision={forecastRevision}>
+            {(forecast) => <ForecastContent forecast={forecast} mockForecast={mock?.forecast === true} userId={persona.id} compact />}
+          </ApiPanel>
+          <ApiPanel id="alerts" title="Alerts" userId={persona.id} load={api.alerts} revision={forecastRevision}>
+            {(alerts) => <AlertList alerts={alerts} />}
+          </ApiPanel>
+          </div>
+        </div>
+      )}
+      {view === "future" && (
+        <div className="future-grid">
+          <ApiPanel id="forecast" title="Your time machine" userId={persona.id} load={loadForecast} revision={forecastRevision}>
+            {(forecast) => <ForecastContent forecast={forecast} mockForecast={mock?.forecast === true} userId={persona.id} />}
+          </ApiPanel>
+          {mock?.forecast === false && (
+            <ApiPanel id="month" title="This month’s spending" userId={persona.id} load={api.spending} revision={potRevision}>
+              {(spending) => <SpendingForecast data={spending} />}
+            </ApiPanel>
+          )}
+        </div>
+      )}
+      {view === "coach" && (
+        <div className="coach-screen">
+          {mock?.agent && !mock.data && !mock.forecast
+            ? <PurchaseCheck userId={persona.id} />
+            : <ChatPanel userId={persona.id} sampleReply={mock?.agent === true} />}
+        </div>
+      )}
+      {view === "home" && persona.name === "Family" && <HouseholdPanel demo={mock?.data === true && mock.forecast} />}
     </>
   );
+}
+
+function currentView(): View {
+  const id = window.location.hash.slice(1);
+  return id === "forecast" || id === "month" ? "future" : id === "coach" ? "coach" : "home";
 }
 
 function currentSection() {
@@ -367,6 +408,7 @@ function SectionNav({ showHousehold }: { showHousehold: boolean }) {
 export default function App() {
   const [persona, setPersona] = useState<Persona>(personas[0]);
   const [health, setHealth] = useState<ApiHealth>();
+  const [view, setView] = useState<View>(currentView);
   const [screen, setScreen] = useState<ScreenId | null>(() => {
     // First visit in this tab starts at the persona picker, like the mockup.
     try {
@@ -376,7 +418,10 @@ export default function App() {
   });
 
   useEffect(() => {
-    const sync = () => setScreen(screenFromHash());
+    const sync = () => {
+      setScreen(screenFromHash());
+      setView(currentView());
+    };
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
@@ -385,11 +430,11 @@ export default function App() {
     // Screens open at the top; dashboard anchors (#forecast, #coach…) scroll once the dashboard has mounted.
     const id = window.location.hash.slice(1);
     const timer = window.setTimeout(() => {
-      if (screen || !id || id === "overview") window.scrollTo({ top: 0 });
+      if (screen || !id || ["overview", "forecast", "coach"].includes(id)) window.scrollTo({ top: 0 });
       else document.getElementById(id)?.scrollIntoView({ block: "start" });
     }, 60);
     return () => window.clearTimeout(timer);
-  }, [screen]);
+  }, [screen, view]);
 
   function pickPersona(userId: string) {
     const match = personas.find((p) => p.id === userId) ?? personas[0];
@@ -421,6 +466,8 @@ export default function App() {
             FinTime
           </a>
           <SectionNav showHousehold={persona.name === "Family"} />
+          <div className="toolbar-end">
+          <AccessibilityMenu />
           <fieldset className="persona-picker">
             <legend className="visually-hidden">Demo profile</legend>
             {personas.map((option) => (
@@ -436,6 +483,7 @@ export default function App() {
               </label>
             ))}
           </fieldset>
+          </div>
         </div>
       </header>
       <main className="app-shell" id="overview" tabIndex={-1}>
@@ -444,6 +492,7 @@ export default function App() {
         {screen === "transactions" && <Transactions key={persona.id} userId={persona.id} />}
         {screen === "tips" && <Tips key={persona.id} userId={persona.id} />}
         {screen === null && <Dashboard
+          view={view}
           key={persona.name}
           persona={persona}
           mock={health?.mock}

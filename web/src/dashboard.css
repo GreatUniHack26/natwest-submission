@@ -227,9 +227,7 @@ svg { display: block; }
   grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
   grid-template-areas:
     "spending forecast"
-    "pots forecast"
-    "pots month"
-    "alerts coach";
+    "pots alerts";
   align-items: start;
   gap: 1.25rem;
 }
@@ -249,12 +247,11 @@ svg { display: block; }
   letter-spacing: -0.024em;
 }
 
-#spending { grid-area: spending; align-self: stretch; }
-#forecast { grid-area: forecast; align-self: stretch; }
-#pots { grid-area: pots; align-self: stretch; }
-#month { grid-area: month; }
+#spending { grid-area: spending; }
+#forecast-preview { grid-area: forecast; }
+#pots { grid-area: pots; }
 #alerts { grid-area: alerts; }
-#coach { grid-area: coach; }
+
 
 .money, .forecast-amount, .forecast-range strong { font-variant-numeric: tabular-nums; }
 
@@ -703,7 +700,7 @@ svg { display: block; }
 @media (max-width: 48rem) {
   .dashboard-grid {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "spending" "forecast" "month" "pots" "alerts" "coach";
+    grid-template-areas: "spending" "forecast" "alerts" "pots";
     gap: 0.875rem;
   }
 }

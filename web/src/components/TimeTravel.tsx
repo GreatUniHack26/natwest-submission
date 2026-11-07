@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { api } from "../api";
 import { dateLabel, gbp } from "../format";
 import type { Timeline, TimelineEvent } from "../types";
@@ -24,19 +24,20 @@ const money = (v: number) => gbp(Math.round(v));
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 function useWidth<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
+  // Callback ref: the chart mounts after data loads, so observe whenever the element appears.
   const [width, setWidth] = useState(640);
-  useLayoutEffect(() => {
-    const el = ref.current;
+  const observer = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((el: T | null) => {
+    observer.current?.disconnect();
     if (!el) return;
-    const obs = new ResizeObserver(([entry]) => setWidth(Math.max(280, Math.round(entry.contentRect.width))));
-    obs.observe(el);
-    return () => obs.disconnect();
+    setWidth(Math.max(280, Math.round(el.getBoundingClientRect().width)));
+    observer.current = new ResizeObserver(([entry]) => setWidth(Math.max(280, Math.round(entry.contentRect.width))));
+    observer.current.observe(el);
   }, []);
   return [ref, width] as const;
 }
 
-export default function TimeTravel({ userId, revision = 0 }: { userId: string; revision?: number }) {
+export default function TimeTravel({ userId, revision = 0, compact = false }: { userId: string; revision?: number; compact?: boolean }) {
   const [data, setData] = useState<Timeline | null>(null);
   const [failed, setFailed] = useState(false);
   const [preset, setPreset] = useState<Preset | null>(null);
@@ -116,7 +117,7 @@ export default function TimeTravel({ userId, revision = 0 }: { userId: string; r
   }
 
   return (
-    <div className="tt">
+    <div className="tt" data-compact={compact}>
       <div className="tt-story" aria-live="polite">
         <div>
           <p className="tt-date"><time dateTime={day.date}>{dateLabel(day.date)}</time>{cursor === 0 ? " · today" : ` · in ${cursor} days`}</p>
@@ -166,7 +167,7 @@ export default function TimeTravel({ userId, revision = 0 }: { userId: string; r
           <path className="tt-median" d={geo.median} pathLength={1} key={`m-${userId}`} />
           <path className="tt-median tt-median-danger" d={geo.median} pathLength={1} clipPath={`url(#below-${gradientId})`} key={`d-${userId}`} />
           {geo.months.map(({ d, i }) => (
-            <text key={d.date} className="tt-month" x={geo.x(i)} y={HEIGHT - 8} textAnchor={i === 0 ? "start" : "middle"}>
+            <text key={d.date} className="tt-month" x={geo.x(i)} y={HEIGHT - 8} textAnchor={i === 0 ? "start" : geo.x(i) > width - PAD.right - 24 ? "end" : "middle"}>
               {i === 0 ? "Today" : new Date(`${d.date}T00:00:00Z`).toLocaleString("en-GB", { month: "short", timeZone: "UTC" })}
             </text>
           ))}
@@ -204,7 +205,7 @@ export default function TimeTravel({ userId, revision = 0 }: { userId: string; r
         {preset && <li><i className="lg-scenario" />What-if</li>}
       </ul>
 
-      <div className="tt-whatif">
+      {!compact && <div className="tt-whatif">
         <p className="tt-whatif-title">Change the future</p>
         <div className="tt-chips" role="group" aria-label="What-if scenarios">
           {PRESETS.map((p) => (
@@ -229,7 +230,7 @@ export default function TimeTravel({ userId, revision = 0 }: { userId: string; r
             <button type="button" className="tt-clear" onClick={() => setPreset(null)}>Clear</button>
           </p>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

@@ -224,14 +224,14 @@ export default function VoiceCoach({ userId, tone }: { userId: string; tone: Ton
         <button type="button" className="voice-orb-button"
           onClick={() => (phase === "idle" ? void start() : void stop())}
           aria-pressed={phase !== "idle"}
-          aria-label={phase === "idle" ? "Start live voice chat with your coach" : "End voice chat"}>
+          aria-label={phase === "idle" ? "Start a live voice chat with Nat" : "End voice chat"}>
           <span className="voice-orb" ref={orb} aria-hidden="true">
             <span className="voice-orb-ring" />
             <span className="voice-orb-core"><Icon name={phase === "idle" ? "mic" : "stop"} /></span>
           </span>
         </button>
         <div className="voice-coach-copy">
-          <p className="voice-coach-title">Talk to your coach</p>
+          <p className="voice-coach-title">Talk to Nat</p>
           <p className="voice-status" aria-live="polite">{status}</p>
           {last !== undefined && (
             <p className="voice-latency" title="Time from when you stopped talking (last voice detected) to the coach’s first audio arriving.">

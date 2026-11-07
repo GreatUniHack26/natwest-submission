@@ -201,7 +201,7 @@ def agent_body(tool_ids: list[str]) -> dict:
         "name": AGENT_NAME,
         "conversation_config": {
             "agent": {
-                "first_message": "Hi, I'm your FinTime coach. What would you like to check?",
+                "first_message": "Hey, it's me, Nat! What would you like to check?",
                 "language": LANGUAGE,
                 "prompt": {
                     # Real prompt (base + tone + live context) arrives per session via overrides.
@@ -379,12 +379,14 @@ def _spoken_dates(text: str) -> str:
 
 def first_message(snapshot: dict) -> str:
     name = ((snapshot.get("profile") or {}).get("name") or "").split(" ")[0]
-    hello = f"Hi {name}, it's your FinTime coach." if name else "Hi, it's your FinTime coach."
+    hello = (f"Hey {name}, it's me, Nat! " if name else "Hey, it's me, Nat! ") + (
+        "I know your spending habits and income patterns inside out, "
+        "and I've already lived a thousand versions of your next ninety days.")
     risk = _first_risk(snapshot)
     if risk:
         risk = _spoken_dates(risk)
-        return f"{hello} One thing I'm watching: {risk}. Want to talk it through, or ask me anything? Cut in whenever you like."
-    return f"{hello} What would you like to check? You can cut in whenever you like."
+        return f"{hello} One thing I'm watching: {risk}. Want to talk it through? Cut in whenever you like."
+    return f"{hello} What would you like to check? Cut in whenever you like."
 
 
 def build_prompt(user_id: str, tone: Optional[str]) -> tuple[str, dict]:

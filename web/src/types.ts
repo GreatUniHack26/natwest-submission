@@ -174,3 +174,6 @@ export interface BenchmarkSummary {
   periods_note: string | null;
   sources: { publication: string; table: string; url: string }[];
 }
+
+/** Text-coach reply shape: a one-line answer plus bullets, or fuller paragraphs. */
+export type Detail = "concise" | "detailed";

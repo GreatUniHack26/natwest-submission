@@ -139,7 +139,7 @@ def test_session_payload_carries_prompt_with_context_and_personal_first_message(
     assert "Tone:" in body["prompt"]
     assert LIVE_CONTEXT in body["prompt"]
     assert "## Voice mode" in body["prompt"]
-    assert body["first_message"].startswith("Hi Sam")
+    assert body["first_message"].startswith("Hey Sam, it's me, Nat!")
     assert "around 26 December, expected balance falls below zero" in body["first_message"]
     assert "get_safe_to_spend" in body["client_tools"]
 

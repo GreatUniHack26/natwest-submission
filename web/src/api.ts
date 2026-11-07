@@ -1,5 +1,5 @@
 // The ONLY place that calls fetch. Components import from here.
-import type { Alert, ChatReply, Forecast, Pot, PurchaseVerdict, SafeToSpend, SpendingForecast, Tone, User, DepositIdeas, TwinSimulations, Timeline } from "./types";
+import type { Alert, ChatReply, Detail, Forecast, Pot, PurchaseVerdict, SafeToSpend, SpendingForecast, Tone, User, DepositIdeas, TwinSimulations, Timeline } from "./types";
 
 const BASE = import.meta.env.VITE_API ?? "http://localhost:8000";
 
@@ -43,8 +43,8 @@ export const api = {
     http<Pot>(`${userPath(pot.user_id)}/pots`, { method: "POST", body: JSON.stringify(pot), signal }),
   simulatePurchase: (uid: string, amount: number, signal?: AbortSignal) =>
     http<PurchaseVerdict>(`${userPath(uid)}/simulate`, { method: "POST", body: JSON.stringify({ amount }), signal }),
-  chat: (uid: string, message: string, tone?: Tone, signal?: AbortSignal, history: ChatTurn[] = []) =>
-    http<ChatReply>(`${userPath(uid)}/chat`, { method: "POST", body: JSON.stringify({ message, tone, history }), signal }),
+  chat: (uid: string, message: string, tone?: Tone, signal?: AbortSignal, history: ChatTurn[] = [], detail?: Detail) =>
+    http<ChatReply>(`${userPath(uid)}/chat`, { method: "POST", body: JSON.stringify({ message, tone, history, detail }), signal }),
   timeline: (uid: string, days = 90, overrides: Record<string, unknown> = {}, signal?: AbortSignal) =>
     http<Timeline>(`${userPath(uid)}/timeline`, { method: "POST", body: JSON.stringify({ days, overrides }), signal }),
   simulations: (uid: string, signal?: AbortSignal) => http<TwinSimulations>(`${userPath(uid)}/simulations`, { signal }),
