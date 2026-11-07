@@ -1,0 +1,10 @@
+.env
+.venv
+**/node_modules
+fintime.db
+audio_cache
+pitch/video
+pitch/video-quick
+pitch/screens
+web/dist
+tests

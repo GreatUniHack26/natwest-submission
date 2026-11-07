@@ -1,0 +1,10 @@
+{
+  "installCommand": "cd web && npm ci",
+  "buildCommand": "cd web && npx vite build",
+  "outputDirectory": "web/dist",
+  "framework": null,
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index" }],
+  "functions": {
+    "api/index.py": { "maxDuration": 60, "includeFiles": "{backend,contracts}/**" }
+  }
+}
