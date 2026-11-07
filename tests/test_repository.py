@@ -167,3 +167,17 @@ def test_only_repository_touches_sqlite():
         if p.name != "repository.py" and "sqlite3" in p.read_text()
     ]
     assert offenders == []
+
+
+def test_get_household_members():
+    for uid, hid in [("a", "h1"), ("b", "h1"), ("c", "h2"), ("d", None)]:
+        repository.save_persona(User(id=uid, name=uid, persona="p", region="r", household_id=hid), [], [])
+    assert [u.id for u in repository.get_household_members("h1")] == ["a", "b"]
+    assert [u.id for u in repository.get_household_members("h2")] == ["c"]
+    assert repository.get_household_members("nope") == []
+
+
+def test_get_household_members_mock_mode(monkeypatch, real_db):
+    monkeypatch.setattr(config, "MOCK_DATA", True)
+    assert repository.get_household_members("h1") == []
+    assert not real_db.exists()
