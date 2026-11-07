@@ -34,7 +34,7 @@ def _everyone(seed=42):
 
 def test_public_interface_is_exactly_what_the_docstring_promises():
     assert set(data.__all__) == {
-        "get_user", "get_household_members", "get_transactions", "get_pots", "add_pot",
+        "get_user", "get_balance", "get_household_members", "get_transactions", "get_pots", "add_pot",
         "set_override", "get_overrides", "categorise", "generate_persona", "generate_household",
     }
     assert all(callable(getattr(data, name)) for name in data.__all__)
@@ -42,6 +42,7 @@ def test_public_interface_is_exactly_what_the_docstring_promises():
 
 @pytest.mark.parametrize("name,params", [
     ("get_user", ["user_id"]),
+    ("get_balance", ["user_id", "as_of"]),
     ("get_household_members", ["household_id"]),
     ("get_transactions", ["user_id", "start", "end"]),
     ("get_pots", ["user_id"]),

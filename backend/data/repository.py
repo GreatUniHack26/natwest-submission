@@ -6,11 +6,13 @@ config.DB_PATH is read on every call (not cached) so tests/tools can point it el
 import datetime as dt
 import sqlite3
 from contextlib import contextmanager
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Iterator, Optional
 
 from backend import config
 from contracts import mock
 from contracts.schemas import Pot, Transaction, User
+from .generator import OPENING_BALANCE_MERCHANT
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -210,3 +212,22 @@ def save_persona(user: User, transactions: list[Transaction], pots: list[Pot]) -
             "INSERT INTO pots (id, user_id, name, amount, due_date) VALUES (?, ?, ?, ?, ?)",
             [(p.id, p.user_id, p.name, p.amount, _iso(p.due_date)) for p in pots],
         )
+
+
+def get_balance(user_id: str, as_of: dt.date) -> float:
+    """Close-of-date balance anchored by one explicit opening-balance entry.
+
+    The synthetic generator's opening row is a start-of-day balance, not pay.
+    Unanchored/sparse mock fixtures are insufficient and fail explicitly.
+    """
+    if get_user(user_id).id != user_id:
+        raise KeyError(f'Unknown user {user_id!r}')
+    transactions = get_transactions(user_id, end=as_of)
+    anchors = [t for t in transactions if t.merchant == OPENING_BALANCE_MERCHANT]
+    if len(anchors) != 1:
+        raise ValueError('Exactly one authoritative opening-balance entry is required')
+    opening = anchors[0]
+    values = [Decimal(str(t.amount)) for t in transactions if t.date >= opening.date]
+    if not all(value.is_finite() for value in values):
+        raise ValueError('Balance transactions must contain finite amounts')
+    return float(sum(values, Decimal(0)).quantize(Decimal('.01'), rounding=ROUND_HALF_UP))
