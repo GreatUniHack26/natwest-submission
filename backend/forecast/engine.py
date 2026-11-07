@@ -7,6 +7,7 @@ and are scenarios, not confidence guarantees. Risks are inspected daily.
 """
 import datetime as dt
 import math
+from decimal import Decimal
 from collections import defaultdict
 
 from backend import config
@@ -14,7 +15,8 @@ from contracts.schemas import Forecast, ForecastPoint, RiskEvent
 from .baseline import weekday_baseline
 from .inputs import Inputs, load_inputs
 from .money import pence, pounds
-from .recurring import occurrences, patterns, payment_std
+from .recurring import add_month, occurrences, patterns, payment_std
+from .scenarios import parse_overrides
 from .reservations import bill_schedule, protected_on, remaining_pots
 
 
@@ -38,15 +40,21 @@ def risks_for_daily(points: list[ForecastPoint], protected: dict[dt.date, int]) 
     return events
 
 
-def project(data: Inputs, horizon_days: int, *, one_off: dict[dt.date, int] | None = None) -> list[ForecastPoint]:
+def project(data: Inputs, horizon_days: int, *, one_off: dict[dt.date, int] | None = None, income_multiplier: Decimal = Decimal(1), monthly_cost: int = 0) -> list[ForecastPoint]:
     validate_horizon(horizon_days)
     end = data.as_of + dt.timedelta(days=horizon_days)
     flows = defaultdict(int)
     variances = defaultdict(float)
     for item, observations in patterns(data.transactions):
         for day in occurrences(item, data.as_of + dt.timedelta(days=1), end):
-            flows[day] += pence(item.amount)
-            variances[day] += (payment_std(item, observations) * 100) ** 2
+            multiplier = income_multiplier if item.amount > 0 else Decimal(1)
+            flows[day] += pence(Decimal(str(item.amount)) * multiplier)
+            variances[day] += (payment_std(item, observations) * float(multiplier) * 100) ** 2
+    if monthly_cost:
+        day = add_month(data.as_of, data.as_of.day)
+        while day <= end:
+            flows[day] -= monthly_cost
+            day = add_month(day, data.as_of.day)
     baseline = weekday_baseline(data.transactions, data.as_of)
     one_off = one_off or {}
     balance, variance = data.balance - one_off.get(data.as_of, 0), 0.0
@@ -82,5 +90,10 @@ def response(data: Inputs, daily: list[ForecastPoint], horizon_days: int) -> For
 
 def build_forecast(user_id: str, horizon_days: int, overrides: dict, *, as_of: dt.date | None = None) -> Forecast:
     validate_horizon(horizon_days)
-    data = load_inputs(user_id, as_of or config.TODAY)
-    return response(data, project(data, horizon_days), horizon_days)
+    as_of = as_of or config.TODAY
+    scenario = parse_overrides(overrides, as_of, horizon_days)
+    data = load_inputs(user_id, as_of)
+    daily = project(data, horizon_days, one_off=scenario.one_off, income_multiplier=scenario.income_multiplier, monthly_cost=scenario.monthly_cost)
+    result = response(data, daily, horizon_days)
+    result.assumptions.extend(scenario.assumptions)
+    return result
