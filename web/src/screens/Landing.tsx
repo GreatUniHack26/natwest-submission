@@ -1,6 +1,6 @@
 // Persona picker (mockup "landing"). Names, persona and region come from GET /users/{id};
 // traits and "What FinTime does for you" are product copy from the mockup.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { Tone, User } from "../types";
 import { ErrorState, Icon, useLoad } from "./shared";
@@ -38,6 +38,43 @@ function initialsOf(name: string) {
   return name.split("&").map((p) => p.trim().charAt(0).toUpperCase()).join("&");
 }
 
+/** Full-screen promo video that starts playing straight away (muted, as browsers require), with a sound toggle. */
+function LandingVideo() {
+  const video = useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = useState(true);
+
+  useEffect(() => {
+    const v = video.current;
+    if (!v) return;
+    v.muted = true;
+    void v.play().catch(() => undefined);
+  }, []);
+
+  function toggleSound() {
+    const v = video.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    if (!v.muted && v.currentTime > v.duration - 1) v.currentTime = 0;
+    void v.play().catch(() => undefined);
+    setMuted(v.muted);
+  }
+
+  return (
+    <section className="ftl-video" aria-label="Meet Nat">
+      <video ref={video} src="/nat-promo.mp4" poster="/nat-promo-poster.jpg" autoPlay muted loop playsInline preload="auto" />
+      <div className="ftl-video-bar">
+        <button type="button" className="ftl-video-sound" onClick={toggleSound} aria-pressed={!muted}>
+          {muted ? "Tap for sound" : "Mute"}
+        </button>
+        <a className="ftl-video-next" href="#ftl-pick-h" onClick={(e) => {
+          e.preventDefault();
+          document.getElementById("ftl-pick-h")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}>Try Nat <span aria-hidden="true">↓</span></a>
+      </div>
+    </section>
+  );
+}
+
 export default function Landing({ onPick }: { onPick: (userId: string, tone?: Tone) => void }) {
   const [state, retry] = useLoad<{ cards: Card[]; failed: string[] }>(async (signal) => {
     const res = await Promise.allSettled(PERSONAS.map((p) => api.user(p.id, signal)));
@@ -62,20 +99,14 @@ export default function Landing({ onPick }: { onPick: (userId: string, tone?: To
 
   return (
     <div className="fts fts-landing">
-      <section className="ftl-hero">
-        <div className="ftl-hero-in">
-          <span className="ftl-kicker"><Icon name="clock-counter-clockwise" />Your financial time-travel coach</span>
-          <h1>Your money, your story. FinTime fits itself to you.</h1>
-          <p>See your balance before it happens, test a purchase before you make it, and talk it through with a coach. Built for tight and irregular budgets.</p>
-        </div>
-      </section>
+      <LandingVideo />
 
       <div className="ftl-body">
         <div className="fts-card ftl-picker">
           <div className="ftl-picker-head">
             <div className="ftl-picker-title">
               <h2 id="ftl-pick-h">Pick your money persona</h2>
-              <p>Every number, alert, tip and coach answer is tuned to who you are. You can switch at any time from the top bar.</p>
+              <p>Pick a person to see Nat with their money. You can switch any time.</p>
             </div>
             <div className="ftl-tone">
               <span id="ftl-tone-l">How FinTime talks to you</span>

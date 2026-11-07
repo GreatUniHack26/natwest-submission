@@ -488,7 +488,7 @@ export default function App() {
   const [screen, setScreen] = useState<ScreenId | null>(() => {
     // First visit in this tab starts at the persona picker, like the mockup.
     try {
-      if (!window.location.hash && !sessionStorage.getItem("fintime-started")) return "start";
+      if (!window.location.hash || window.location.hash === "#start") return "start";
     } catch { /* storage unavailable: skip the picker */ }
     return screenFromHash();
   });
