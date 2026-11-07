@@ -21,7 +21,7 @@ def test_benchmark_tool_schema_shape():
 
 
 def test_is_benchmarks_available_when_absent_and_present(monkeypatch):
-    monkeypatch.delitem(sys.modules, "backend.benchmarks", raising=False)
+    monkeypatch.setitem(sys.modules, "backend.benchmarks", None)  # None makes `import` raise: genuinely absent
     assert benchmark_adapter.is_benchmarks_available() is False
 
     dummy_mod = types.ModuleType("backend.benchmarks")
@@ -62,7 +62,7 @@ def test_validate_benchmark_args_accepts_valid():
 
 
 def test_run_get_benchmark_raises_when_unavailable(monkeypatch):
-    monkeypatch.delitem(sys.modules, "backend.benchmarks", raising=False)
+    monkeypatch.setitem(sys.modules, "backend.benchmarks", None)  # None makes `import` raise: genuinely absent
     with pytest.raises(RuntimeError, match="backend.benchmarks"):
         benchmark_adapter.run_get_benchmark("sam", {"category": "eating out"})
 
