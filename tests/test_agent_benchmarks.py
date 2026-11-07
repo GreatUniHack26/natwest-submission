@@ -1,6 +1,7 @@
 """Tests for the regional benchmarks agent tool adapter (#41)."""
 from __future__ import annotations
 
+import importlib
 import sys
 import types
 
@@ -21,7 +22,11 @@ def test_benchmark_tool_schema_shape():
 
 
 def test_is_benchmarks_available_when_absent_and_present(monkeypatch):
-    monkeypatch.setitem(sys.modules, "backend.benchmarks", None)  # None makes `import` raise: genuinely absent
+    # Removing a cache entry only reloads the installed module; None blocks import.
+    installed = importlib.import_module("backend.benchmarks")
+    assert callable(installed.get_benchmark)
+    assert benchmark_adapter.is_benchmarks_available() is True
+    monkeypatch.setitem(sys.modules, "backend.benchmarks", None)
     assert benchmark_adapter.is_benchmarks_available() is False
 
     dummy_mod = types.ModuleType("backend.benchmarks")
@@ -62,7 +67,7 @@ def test_validate_benchmark_args_accepts_valid():
 
 
 def test_run_get_benchmark_raises_when_unavailable(monkeypatch):
-    monkeypatch.setitem(sys.modules, "backend.benchmarks", None)  # None makes `import` raise: genuinely absent
+    monkeypatch.setitem(sys.modules, "backend.benchmarks", None)
     with pytest.raises(RuntimeError, match="backend.benchmarks"):
         benchmark_adapter.run_get_benchmark("sam", {"category": "eating out"})
 
