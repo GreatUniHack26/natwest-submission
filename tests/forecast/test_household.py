@@ -155,3 +155,17 @@ def test_actual_generated_family_sqlite_and_endpoint_integration(monkeypatch,tmp
     response = TestClient(app).get('/households/h1/forecast?days=90')
     assert response.status_code == 200
     assert Forecast.model_validate(response.json()) == result
+
+
+def test_misaligned_projection_dates_fail_before_aggregation(family,monkeypatch):
+    # Boundary guard only: real financial maths runs, then corrupt one date.
+    from backend.forecast import household
+    real_project = household.project
+    def misaligned(data,horizon):
+        points = real_project(data,horizon)
+        if data.user_id == 'adult2':
+            points[-1] = points[-1].model_copy(update={'date':points[-1].date+dt.timedelta(days=1)})
+        return points
+    monkeypatch.setattr(household,'project',misaligned)
+    with pytest.raises(ValueError,match='dates must align'):
+        forecast.household_forecast('h1',10)
