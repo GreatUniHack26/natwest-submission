@@ -39,4 +39,4 @@ def load_inputs(user_id: str, as_of: dt.date) -> Inputs:
         raise ValueError('Repository returned financial data for another user')
     if any(pence(p.amount) < 0 for p in pots):
         raise ValueError('Pot amounts must be nonnegative')
-    return Inputs(user_id, as_of, balance, [t for t in transactions if start <= t.date < as_of], pots)
+    return Inputs(user_id, as_of, balance, [t for t in transactions if start <= t.date <= as_of], pots)
