@@ -72,6 +72,9 @@ def patterns(transactions: list[Transaction]) -> list[tuple[Recurring, list[Tran
             if all(4 <= gap <= 10 for gap in gaps) and (not income or 6 <= mean(gaps) <= 8):
                 every, due = 7, candidate[-1].date + dt.timedelta(days=7)
                 anchor = None
+            elif income and all(gap == 28 for gap in gaps):
+                # Four-weekly benefits are not calendar-month income.
+                every, due, anchor = 28, candidate[-1].date + dt.timedelta(days=28), None
             elif all(abs((b.date - add_month(a.date)).days) <= 3 for a, b in zip(candidate, candidate[1:])):
                 every, monthly = 30, True
                 month_end = (len({t.date.day for t in candidate}) > 1 or candidate[0].date.day == 31) and all(abs((t.date - dt.date(t.date.year, t.date.month, calendar.monthrange(t.date.year, t.date.month)[1])).days) <= 3 for t in candidate)

@@ -5,6 +5,7 @@ It does not assert that volatility, alert count or safe-to-spend is monotonic.
 """
 import ast
 import datetime as dt
+import sys
 from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
@@ -126,7 +127,13 @@ def test_forecast_architecture_has_no_llm_network_or_database_dependencies():
                 modules = []
             for module in modules:
                 assert module.split('.')[0] not in blocked, (path,module)
+                if module and not (isinstance(node,ast.ImportFrom) and node.level):
+                    assert module.split('.')[0] in sys.stdlib_module_names | {'backend','contracts'}, (path,module)
+                if module.startswith('backend.data'):
+                    assert module == 'backend.data' and isinstance(node,ast.ImportFrom), (path,module)
                 assert not module.startswith(('backend.agent','backend.api','web','backend.data.generator')), (path,module)
+            if isinstance(node,ast.Attribute) and isinstance(node.value,ast.Name) and node.value.id == 'repository':
+                assert not node.attr.startswith('_'), (path,node.attr)
             if isinstance(node,ast.Call) and isinstance(node.func,ast.Name):
                 assert node.func.id not in {'__import__','eval','exec','open'}, (path,node.lineno)
 
@@ -189,3 +196,9 @@ def test_six_month_sam_demo_reconciles_safe_purchase_and_december_risk(ledger):
     purchase = forecast.simulate_purchase('sam',30,today)
     assert purchase.affordable and purchase.safe_after == 180
     assert purchase.better_date == dt.date(2026,11,27)
+
+
+def test_four_weekly_benefit_is_not_monthly_income():
+    item, = detect_recurring(txs(['2026-08-01','2026-08-29','2026-09-26','2026-10-24'],[173.2]*4,merchant='Child Benefit'))
+    assert item.every_days == 28
+    assert list(occurrences(item,dt.date(2026,11,1),dt.date(2026,12,31))) == [dt.date(2026,11,21),dt.date(2026,12,19)]
