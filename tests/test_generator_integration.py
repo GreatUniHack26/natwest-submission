@@ -130,11 +130,14 @@ def test_shift_income_is_not_confusable_with_a_fixed_salary(sam):
     assert max(amounts) / min(amounts) > 1.5
 
 
-def test_opening_balance_is_the_only_non_shift_income(sam):
-    """Recurring-income consumers can exclude exactly one marker merchant."""
+def test_opening_balance_stipend_and_shift_income_are_distinct(sam):
+    """A fixed study stipend is separate from irregular shift receipts and savings."""
     _, txs, _ = sam
     merchants = {t.merchant for t in txs if t.kind == "income"}
-    assert merchants == {OPENING_BALANCE_MERCHANT, "Cafe shift pay"}
+    assert merchants == {OPENING_BALANCE_MERCHANT, "Cafe shift pay", "Study stipend"}
+    stipend = [t for t in txs if t.merchant == "Study stipend"]
+    assert {t.amount for t in stipend} == {150}
+    assert {t.date.day for t in stipend} == {20}
 
 
 def test_alert_window_sees_the_spike(sam):

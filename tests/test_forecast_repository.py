@@ -66,7 +66,7 @@ def test_generated_sam_authoritative_closing_balance_and_historical_lookup():
     assert repository.get_balance('sam',opening.date) == float(expected.quantize(Decimal('.01')))
 
 
-def test_real_sqlite_forecast_integration_discloses_generated_demo_gap(monkeypatch):
+def test_real_sqlite_forecast_integration_reproduces_generated_demo(monkeypatch):
     from backend import forecast
     from backend.main import app
     from fastapi.testclient import TestClient
@@ -78,16 +78,16 @@ def test_real_sqlite_forecast_integration_discloses_generated_demo_gap(monkeypat
     assert all(p.low <= p.expected <= p.high for p in result.points)
     assert result == forecast.forecast('sam',90)
     safe = forecast.safe_to_spend('sam',config.TODAY)
-    # Generated income is irregular, not promised; the disclosed conservative
-    # policy reserves 3*(950 rent + 15 phone + 5.99 Spotify + 10.99 Netflix).
-    assert safe.upcoming_bills == 2945.94
-    assert safe.safe_amount == -2555.94
-    assert sum(round(line.amount*100) for line in safe.breakdown) == -255594
+    # A fixed stipend arrives on the 20th; reserve phone15, utilities154.01,
+    # and Netflix10.99 (bills first on the income date), not uncertain shift pay.
+    assert safe.upcoming_bills == 180
+    assert safe.safe_amount == 210
+    assert sum(round(line.amount*100) for line in safe.breakdown) == 21000
     purchase = forecast.simulate_purchase('sam',30,config.TODAY)
-    assert purchase.affordable is False and purchase.safe_after == -2585.94
+    assert purchase.affordable is True and purchase.safe_after == 180
     client = TestClient(app)
     response = client.get('/users/sam/safe-to-spend')
-    assert response.status_code == 200 and response.json()['safe_amount'] == -2555.94
+    assert response.status_code == 200 and response.json()['safe_amount'] == 210
 
 
 def test_balance_source_is_independent_of_user_category_overrides():
