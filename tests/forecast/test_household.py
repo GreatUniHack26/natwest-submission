@@ -108,3 +108,50 @@ def test_membership_is_rechecked_against_real_user(family,monkeypatch):
     response = client.get('/households/h1/forecast')
     assert response.status_code == 404
     assert 'other-household' not in response.text
+
+
+def test_shared_pot_funds_another_members_bill_once(family):
+    family['balances'] = {'adult1':150,'adult2':50}
+    # The first adult owns the shared reserve; the second pays the bill.
+    family['pots']['adult1'] = [Pot(id='rent',user_id='adult1',name='Rent',amount=180,due_date='2026-11-10')]
+    family['transactions']['adult2'] = [t.model_copy(update={'user_id':'adult2'}) for t in txs(['2026-08-10','2026-09-10','2026-10-10'],[-180]*3)]
+    result = forecast.household_safe_to_spend('h1')
+    assert result.pots_total == 180
+    assert result.upcoming_bills == 360  # December/January, not funded November again
+    assert result.safe_amount == -340
+    assert sum(line.amount for line in result.breakdown) == -340
+    assert not forecast.household_forecast('h1',7).risk_events  # funded reserve consumed; £20 remains
+
+
+def test_two_bills_same_merchant_date_do_not_reuse_credit(family):
+    for uid in ('adult1','adult2'):
+        family['transactions'][uid] = [t.model_copy(update={'user_id':uid}) for t in txs(['2026-08-10','2026-09-10','2026-10-10'],[-50]*3)]
+    family['pots']['adult1'] = [Pot(id='shared',user_id='adult1',name='Rent',amount=60,due_date='2026-11-10')]
+    result = forecast.household_safe_to_spend('h1')
+    assert result.upcoming_bills == 240  # six £50 bills, minus one £60 allocation
+    assert result.pots_total == 60 and result.safe_amount == 0
+    assert sum(line.amount for line in result.breakdown) == 0
+
+
+@pytest.mark.skipif(not hasattr(repository,'get_balance'),reason='Real balance interface awaits P1 approval in #55')
+def test_actual_generated_family_sqlite_and_endpoint_integration(monkeypatch,tmp_path):
+    from backend.data.seed import seed
+    monkeypatch.setattr(config,'MOCK_DATA',False)
+    monkeypatch.setattr(config,'MOCK_FORECAST',False)
+    monkeypatch.setattr(config,'DB_PATH',str(tmp_path/'real-family.db'))
+    monkeypatch.setattr(config,'TODAY',dt.date(2026,11,7))
+    seed()
+    members = repository.get_household_members('h1')
+    assert [u.id for u in members] == ['dan','maya']
+    individual = [forecast.forecast(u.id,90) for u in members]
+    result = forecast.household_forecast('h1',90)
+    assert result.points[0].expected == 1420  # Dan £220 + Maya £1200, real anchored balances
+    assert all(p.expected == pytest.approx(sum(member.points[i].expected for member in individual),abs=.001) for i,p in enumerate(result.points))
+    assert all(p.low <= p.expected <= p.high for p in result.points)
+    safe = forecast.household_safe_to_spend('h1')
+    assert safe.balance == 1420 and safe.pots_total == 875
+    assert sum(round(line.amount*100) for line in safe.breakdown) == round(safe.safe_amount*100)
+    assert 'sam' not in str(result.assumptions) and 'alex' not in str(result.assumptions)
+    response = TestClient(app).get('/households/h1/forecast?days=90')
+    assert response.status_code == 200
+    assert Forecast.model_validate(response.json()) == result

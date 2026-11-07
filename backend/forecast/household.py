@@ -3,8 +3,8 @@
 Repository balances/pots must each have one owner. Duplicate pot IDs are
 rejected. Per-member low/high bounds add (perfectly correlated uncertainty),
 while risk events are recomputed from aggregate daily balances and protection.
-Safe amounts add conservatively: another member's future income is not treated
-as money already available to pay an individual's bills.
+Reservations use each member's income cutoff; shared funding is allocated once.
+Another member's future income is not promised to pay an individual's bills.
 """
 import datetime as dt
 
@@ -14,9 +14,9 @@ from contracts.schemas import BreakdownItem, Forecast, ForecastPoint, SafeToSpen
 from .engine import project, risks_for_daily, validate_horizon
 from .inputs import ForecastDataUnavailable, load_inputs
 from .money import pence, pounds
-from .pots import safe_from_inputs
+from .pots import bill_reservations
 from .recurring import patterns
-from .reservations import bill_schedule, protected_on
+from .reservations import allocations, bill_schedule, protected_on, unfunded_bills
 
 
 def household_inputs(household_id: str):
@@ -49,16 +49,14 @@ def household_forecast(household_id: str, horizon: int = 90) -> Forecast:
         raise ValueError('Household forecast dates must align')
     combined = [ForecastPoint(date=day, **{field: pounds(sum(pence(getattr(points[index], field)) for points in daily))
                                           for field in ('low','expected','high')}) for index, day in enumerate(dates)]
-    protected = {day: 0 for day in dates}
-    for item in data:
-        bills = bill_schedule([p for p, _ in patterns(item.transactions)], item.as_of + dt.timedelta(days=1), dates[-1])
-        for day in dates:
-            protected[day] += protected_on(item.pots, bills, day)
+    pots = [pot for item in data for pot in item.pots]
+    bills = [bill for item in data for bill in bill_schedule([p for p, _ in patterns(item.transactions)], item.as_of + dt.timedelta(days=1), dates[-1])]
+    protected = {day: protected_on(pots, bills, day) for day in dates}
     assumptions = [
         'Household expected balances and low/high bounds sum members at matching dates; bands assume perfectly correlated uncertainty.',
         'Each account balance and pot must have exactly one owner. Internal transfers are excluded from consumption/income patterns; no voluntary future transfers are assumed.',
         'Household risk events are recalculated from aggregate daily balances and protected money, not copied from individual warnings.',
-        'This is oversight of separately owned money; safe-to-spend conservatively sums individual reservations, without promising transfers between members.',
+        'This is oversight of separately owned money; safe-to-spend uses individual income cutoffs and allocates shared pot funding once across members, without promising transfers between members.',
     ]
     assumptions += [f'Member {item.user_id}: opening contribution £{pounds(item.balance):.2f}; final expected contribution £{points[-1].expected:.2f}.' for item, points in zip(data, daily)]
     return Forecast(user_id=household_id,horizon_days=horizon,points=[p for i,p in enumerate(combined) if i % 7 == 0 or i == horizon],
@@ -67,8 +65,20 @@ def household_forecast(household_id: str, horizon: int = 90) -> Forecast:
 
 def household_safe_to_spend(household_id: str) -> SafeToSpend:
     data = household_inputs(household_id)
-    results = [(item.user_id, safe_from_inputs(item)) for item in data]
-    totals = {field: pounds(sum(pence(getattr(result,field)) for _,result in results))
-              for field in ('balance','pots_total','upcoming_bills','safe_amount')}
-    breakdown = [BreakdownItem(label=f'{uid}: {line.label}',amount=line.amount) for uid,result in results for line in result.breakdown]
-    return SafeToSpend(**totals,breakdown=breakdown)
+    prepared = [(item, bill_reservations(item)) for item in data]
+    pots = [pot for _, (member_pots, _, _) in prepared for pot in member_pots]
+    records = sorted([(*bill, item.user_id) for item, (_, bills, _) in prepared for bill in bills])
+    bills = [record[:3] for record in records]
+    credits, _ = allocations(pots, bills)
+    unfunded = unfunded_bills(bills, credits)
+    balance = sum(item.balance for item in data)
+    pots_total = sum(pence(pot.amount) for pot in pots)
+    upcoming = sum(amount for _, _, amount in unfunded)
+    breakdown = [BreakdownItem(label=f'{item.user_id}: balance at close of {item.as_of}',amount=pounds(item.balance)) for item in data]
+    breakdown += [BreakdownItem(label=f'{pot.user_id}: protected pot {pot.name}',amount=-pounds(pence(pot.amount))) for pot in sorted(pots,key=lambda p:p.id)]
+    breakdown += [BreakdownItem(label=f'{record[3]}: unfunded {merchant} on {day}',amount=-pounds(amount)) for record,(day,merchant,amount) in zip(records,unfunded)]
+    breakdown += [BreakdownItem(label=f'{item.user_id}: no certain income; reserving 90 days of bills',amount=0) for item,(_,_,has_income) in prepared if not has_income]
+    if balance - pots_total - upcoming < 0:
+        breakdown.append(BreakdownItem(label='Household safe amount is negative: commitments exceed balances',amount=0))
+    return SafeToSpend(balance=pounds(balance),pots_total=pounds(pots_total),upcoming_bills=pounds(upcoming),
+                       safe_amount=pounds(balance-pots_total-upcoming),breakdown=breakdown)

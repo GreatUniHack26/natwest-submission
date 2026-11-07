@@ -6,8 +6,10 @@ weekly/end points follow the individual convention. Low/expected/high each sum
 member values, treating their uncertainty as perfectly correlated. Daily risks
 are recalculated against aggregate balances and protected funds.
 
-`household_safe_to_spend(household_id)` conservatively sums individual safe
-amounts and labels every member's breakdown. This is an oversight view of
+`household_safe_to_spend(household_id)` uses each individual's income
+cutoff, allocates shared pot funding once across members, and labels the
+breakdown. A pot can fund another member's bill under the exact-name/date
+convention; multiple bills at one merchant/date share one capped allocation. This is an oversight view of
 separately owned funds, not a promise that one member can spend another's money.
 
 P1 must provide `get_household_members(household_id) -> list[User]` and authoritative
