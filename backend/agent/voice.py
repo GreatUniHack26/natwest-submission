@@ -18,7 +18,7 @@ from backend import config
 
 CACHE_DIR = Path(os.getenv("AUDIO_CACHE_DIR", "audio_cache"))
 AUDIO_URL_PREFIX = "/audio"
-DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
+DEFAULT_VOICE_ID = "XrExE9yKIg1WjnnlVkGX"  # Nat's voice
 ELEVENLABS_TTS_URL_TEMPLATE = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
 ELEVENLABS_MODEL_ID = "eleven_multilingual_v2"
 TTS_TIMEOUT_SECONDS = 10.0
