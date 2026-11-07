@@ -13,7 +13,7 @@
     {"date": "2027-01-02", "low": -150, "expected": 60, "high": 380}
   ],
   "risk_events": [
-    {"date": "2026-12-26", "reason": "Balance may go negative before your January income arrives.", "severity": "high"}
+    {"date": "2026-12-26", "reason": "Low-band balance may fall below zero before January income arrives.", "severity": "medium"}
   ],
   "assumptions": [
     "Rent and phone bill repeat monthly (detected from 6 months of history).",

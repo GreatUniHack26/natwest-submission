@@ -4,5 +4,5 @@
   {"id": "t3", "user_id": "sam", "date": "2026-11-04", "merchant": "Cafe shift pay", "amount": 142.00, "category": "income", "kind": "income"},
   {"id": "t4", "user_id": "sam", "date": "2026-11-05", "merchant": "Deliveroo", "amount": -18.90, "category": "eating out", "kind": "want"},
   {"id": "t5", "user_id": "sam", "date": "2026-11-06", "merchant": "TfL / Metrolink", "amount": -9.20, "category": "transport", "kind": "need"},
-  {"id": "t6", "user_id": "sam", "date": "2026-11-01", "merchant": "Landlord (rent)", "amount": -475.00, "category": "housing", "kind": "need"}
+  {"id": "t6", "user_id": "sam", "date": "2026-11-01", "merchant": "Landlord (rent)", "amount": -950.00, "category": "housing", "kind": "need"}
 ]
