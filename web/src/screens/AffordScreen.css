@@ -1,0 +1,75 @@
+.fta-cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.fta-form { flex: 1 1 320px; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.fta-verdict { flex: 2 1 460px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+
+.fta-field { display: flex; flex-direction: column; gap: 6px; font: 700 14px var(--s-font-body); }
+.fta-field input, .fta-amount {
+  min-height: 48px; border: 1.5px solid var(--s-line); border-radius: var(--s-radius);
+  background: var(--s-white); color: var(--s-text);
+}
+.fta-field > input { padding: 0 14px; font: 400 16px var(--s-font-body); }
+.fta-field input:focus-visible { outline: 3px solid var(--s-accent); outline-offset: 2px; }
+.fta-amount { display: flex; align-items: center; padding-left: 14px; }
+.fta-amount > span { font: 700 18px var(--s-font-display); color: var(--s-text-2); }
+.fta-amount input {
+  flex: 1; min-width: 0; border: none; background: transparent; padding: 0 10px; min-height: 45px;
+  font: 700 20px var(--s-font-display); font-variant-numeric: tabular-nums;
+}
+.fta-amount:focus-within { outline: 3px solid var(--s-accent); outline-offset: 2px; }
+.fta-amount input:focus-visible { outline: none; }
+.fta-hint { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--s-text-2); margin-top: -10px; }
+
+.fta-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.fta-quick button {
+  min-height: 44px; padding: 0 16px; border: none; border-radius: var(--s-pill); cursor: pointer;
+  background: var(--s-lav); color: var(--s-deep); font: 700 14px var(--s-font-body);
+}
+.fta-quick button:hover { background: var(--s-line); }
+.fta-quick button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--s-purple); }
+
+/* Verdict head */
+.fta-vhead { padding: 24px 28px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--s-line); background: var(--s-white); }
+.fta-vhead--no { background: var(--s-lav); }
+.fta-vchip {
+  display: inline-flex; align-self: flex-start; align-items: center; gap: 6px;
+  border-radius: var(--s-pill); padding: 5px 14px; font: 700 14px var(--s-font-body);
+}
+.fta-vchip .fts-icon { font-size: 18px; }
+.fta-vchip--ok { background: var(--s-success); color: var(--s-white); }
+.fta-vchip--tight { background: var(--s-warning); color: var(--s-text); }
+.fta-vchip--no { background: var(--s-purple); color: var(--s-white); }
+.fta-vfig { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.fta-vbig { font-weight: 800; font-size: clamp(44px, 5vw, 64px); line-height: 1; color: var(--s-deep); }
+.fta-vcap { font: 700 15px var(--s-font-body); color: var(--s-text-2); }
+.fta-vsentence { font-size: 16px; line-height: 1.6; max-width: 640px; }
+
+.fta-vbody { padding: 20px 28px; display: flex; flex-direction: column; gap: 16px; }
+.fta-vbody h3 { font: 700 15px var(--s-font-display); }
+.fta-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
+.fta-opt { border: 1.5px solid var(--s-line); border-radius: var(--s-radius); padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.fta-opt-t { display: flex; align-items: center; gap: 8px; font: 700 15px var(--s-font-body); color: var(--s-deep); }
+.fta-opt-t .fts-icon { font-size: 20px; }
+.fta-opt-fig { font-weight: 700; font-size: 20px; }
+.fta-opt-x { font-size: 14px; line-height: 1.5; color: var(--s-text-2); }
+
+.fta-better { background: var(--s-lav); border-radius: var(--s-radius); padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start; }
+.fta-better > .fts-icon { font-size: 22px; color: var(--s-purple); margin-top: 2px; }
+.fta-better > div { display: flex; flex-direction: column; gap: 2px; }
+.fta-better strong { font: 700 14px var(--s-font-body); color: var(--s-deep); }
+.fta-better span { font-size: 15px; line-height: 1.55; }
+
+.fta-nums-bar { border-top: 1px solid var(--s-line); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.fta-nums-toggle {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; border: none; background: none; cursor: pointer;
+  font: 700 15px var(--s-font-body); color: var(--s-text);
+}
+.fta-nums-toggle .fts-icon { color: var(--s-purple); }
+.fta-nums { width: 100%; border-collapse: collapse; font-size: 15px; }
+.fta-nums tr { border-bottom: 1px solid var(--s-line); }
+.fta-nums td { padding: 10px 0; color: var(--s-text-2); }
+.fta-nums td.fts-money { text-align: right; font-weight: 700; color: var(--s-text); font-family: var(--s-font-body); }
+
+@media (max-width: 520px) {
+  .fta-form { padding: 18px; }
+  .fta-vhead, .fta-vbody { padding-left: 18px; padding-right: 18px; }
+}

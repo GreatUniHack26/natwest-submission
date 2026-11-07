@@ -1,0 +1,197 @@
+{
+  "name": "FinTime news",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fintime-news",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b2c1a0de-0001-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "5f3c9a7e-6b1d-4c2a-9e0f-3a1b2c4d5e6f"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "options": {}
+      },
+      "id": "b2c1a0de-0002-4000-8000-000000000002",
+      "name": "BBC Business RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        20
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://www.theguardian.com/money/rss",
+        "options": {}
+      },
+      "id": "b2c1a0de-0003-4000-8000-000000000003",
+      "name": "Guardian Money RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://www.bankofengland.co.uk/rss/news",
+        "options": {}
+      },
+      "id": "b2c1a0de-0004-4000-8000-000000000004",
+      "name": "Bank of England RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        380
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "b2c1a0de-0005-4000-8000-000000000005",
+      "name": "Merge Feeds",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Filter merged RSS items to UK cost-of-living news and shape them for FinTime.\nconst body = ($('Webhook').first().json.body) || {};\nconst requestedTopic = typeof body.topic === 'string' ? body.topic.trim().toLowerCase().slice(0, 60) : '';\nconst limit = Math.max(1, Math.min(parseInt(body.limit, 10) || 6, 10));\n\nconst TOPICS = {\n  'energy': ['energy', 'price cap', 'ofgem', 'gas bill', 'electricity', 'energy bill'],\n  'fuel': ['fuel', 'petrol', 'diesel'],\n  'interest rates': ['interest rate', 'interest rates', 'bank rate', 'base rate', 'mortgage', 'mortgages'],\n  'inflation': ['inflation', 'cpi', 'food prices', 'cost of living', 'cost-of-living'],\n  'wages': ['wages', 'wage', 'minimum wage', 'living wage', 'pay rise'],\n  'benefits': ['benefits', 'universal credit', 'state pension', 'dwp'],\n  'housing': ['rent', 'rents', 'renters', 'landlord'],\n  'tax': ['council tax', 'budget', 'tax', 'taxes', 'income tax', 'national insurance'],\n};\nconst esc = (s) => s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\nconst has = (text, words) => words.some((w) => new RegExp('\\\\b' + esc(w) + '\\\\b', 'i').test(text));\nconst classify = (text) => Object.keys(TOPICS).find((t) => has(text, TOPICS[t])) || null;\nconst clean = (v, max) => {\n  let s = String(v || '').replace(/<[^>]*>/g, ' ').replace(/[\\u0000-\\u001f\\u007f-\\u009f]/g, ' ').replace(/\\s+/g, ' ').trim();\n  return s.length > max ? s.slice(0, max - 1).trimEnd() + '\u2026' : s;\n};\nconst publisherOf = (link) => {\n  const host = (String(link || '').match(/^https?:\\/\\/([^/]+)/i) || [])[1] || '';\n  if (host.includes('bbc.')) return 'BBC News';\n  if (host.includes('theguardian.')) return 'The Guardian';\n  if (host.includes('bankofengland.')) return 'Bank of England';\n  return host.replace(/^www\\./, '');\n};\n\nlet topicWords = [];\nif (requestedTopic) {\n  const key = Object.keys(TOPICS).find((t) => t === requestedTopic || TOPICS[t].includes(requestedTopic) || t.startsWith(requestedTopic));\n  topicWords = key ? [key, ...TOPICS[key]] : requestedTopic.split(/[^a-z0-9]+/).filter((w) => w.length > 2);\n}\n\nconst seen = new Set();\nconst items = [];\nfor (const { json } of $input.all()) {\n  if (!json || json.error || !json.title) continue;\n  const title = clean(json.title, 200);\n  const summary = clean(json.contentSnippet || json.content || json.description || json.summary, 240);\n  const text = title + ' ' + summary;\n  const topic = classify(text);\n  if (!topic) continue;\n  const url = /^https?:\\/\\//i.test(json.link || '') ? json.link : '';\n  const key = (url || title).toLowerCase();\n  if (seen.has(key)) continue;\n  seen.add(key);\n  const date = new Date(json.isoDate || json.pubDate || 0);\n  items.push({\n    title,\n    summary,\n    url,\n    published: isNaN(date) || date.getTime() === 0 ? '' : date.toISOString(),\n    publisher: publisherOf(url),\n    topic,\n    _match: topicWords.length ? has(text + ' ' + topic, topicWords) : false,\n  });\n}\n\nitems.sort((a, b) => (b._match - a._match) || b.published.localeCompare(a.published));\nreturn [{ json: { items: items.slice(0, limit).map(({ _match, ...rest }) => rest) } }];\n"
+      },
+      "id": "b2c1a0de-0006-4000-8000-000000000006",
+      "name": "Filter Cost-of-Living News",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "b2c1a0de-0007-4000-8000-000000000007",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1000,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "BBC Business RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Guardian Money RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Bank of England RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BBC Business RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardian Money RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge Feeds",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Bank of England RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge Feeds",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Feeds": {
+      "main": [
+        [
+          {
+            "node": "Filter Cost-of-Living News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Cost-of-Living News": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

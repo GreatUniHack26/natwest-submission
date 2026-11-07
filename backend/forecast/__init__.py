@@ -61,3 +61,39 @@ def household_safe_to_spend(household_id: str) -> SafeToSpend:
     from .household import household_safe_to_spend as calculate
 
     return calculate(household_id)
+
+
+def spending_forecast(user_id: str) -> dict:
+    """Per-category month-end projection with overspend alarms (real forecast mode only)."""
+    if config.MOCK_FORECAST:
+        raise ValueError('Spending forecast requires real forecast mode')
+    from .spending import spending_forecast as calculate
+
+    return calculate(user_id)
+
+
+def deposit_ideas(user_id: str) -> dict:
+    """Short-term saver ideas for ring-fenced pots (real forecast mode only)."""
+    if config.MOCK_FORECAST:
+        raise ValueError('Deposit ideas require real forecast mode')
+    from .deposits import deposit_ideas as calculate
+
+    return calculate(user_id)
+
+
+def simulate_futures(user_id: str, horizon_days: int = 90, sims: int = 1000) -> dict:
+    """Monte Carlo twin: odds of going below zero, dipping into pots, and runway (real mode only)."""
+    if config.MOCK_FORECAST:
+        raise ValueError('Simulations require real forecast mode')
+    from .montecarlo import simulate_futures as calculate
+
+    return calculate(user_id, horizon_days, sims)
+
+
+def timeline(user_id: str, horizon_days: int = 90, overrides: Optional[dict] = None) -> dict:
+    """Daily time-travel data: Monte Carlo fan, expected line, pot floor, events, optional what-if."""
+    if config.MOCK_FORECAST:
+        raise ValueError('Timeline requires real forecast mode')
+    from .time_travel import timeline as calculate
+
+    return calculate(user_id, horizon_days, overrides)

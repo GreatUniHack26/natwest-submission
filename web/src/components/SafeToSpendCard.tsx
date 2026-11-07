@@ -1,6 +1,32 @@
+import type { CSSProperties } from "react";
 import { gbp } from "../format";
 import type { SafeToSpend } from "../types";
+import CountUp from "./CountUp";
 import Icon from "./Icon";
+
+/** The twin's money story: what's in the account vs what's actually free to spend. */
+function MoneyStory({ data }: { data: SafeToSpend }) {
+  const total = Math.max(data.balance, data.pots_total + data.upcoming_bills + Math.max(data.safe_amount, 0), 1);
+  const share = (value: number) => `${Math.max(0, (value / total) * 100)}%`;
+  const safe = Math.max(data.safe_amount, 0);
+
+  return (
+    <div className="money-story">
+      <div className="money-story-bar" role="img"
+        aria-label={`Balance ${gbp(data.balance)}: ${gbp(data.pots_total)} protected in pots, ${gbp(data.upcoming_bills)} for bills before next income, ${gbp(data.safe_amount)} safe to spend.`}>
+        <span className="story-seg story-pots" style={{ "--w": share(data.pots_total), "--i": 0 } as CSSProperties} />
+        <span className="story-seg story-bills" style={{ "--w": share(data.upcoming_bills), "--i": 1 } as CSSProperties} />
+        <span className="story-seg story-safe" style={{ "--w": share(safe), "--i": 2 } as CSSProperties} />
+      </div>
+      <dl className="money-story-legend">
+        <div><dt>In your account</dt><dd className="money">{gbp(data.balance)}</dd></div>
+        <div><dt><span className="dot story-pots" aria-hidden="true" />Protected in pots</dt><dd className="money">−{gbp(data.pots_total)}</dd></div>
+        <div><dt><span className="dot story-bills" aria-hidden="true" />Bills before next income</dt><dd className="money">−{gbp(data.upcoming_bills)}</dd></div>
+        <div className="story-total"><dt><span className="dot story-safe" aria-hidden="true" />Safe to spend</dt><dd className="money">{gbp(data.safe_amount)}</dd></div>
+      </dl>
+    </div>
+  );
+}
 
 export default function SafeToSpendCard({ data, demoPreview = false }: { data: SafeToSpend; demoPreview?: boolean }) {
   return (
@@ -9,11 +35,14 @@ export default function SafeToSpendCard({ data, demoPreview = false }: { data: S
         <p className="spending-description">
           {data.safe_amount < 0
             ? "Shortfall after upcoming bills and money set aside."
-            : "Available after upcoming bills and money set aside."}
+            : "Free to spend today. Your pots and bills are already protected."}
           {demoPreview && " Includes pots added in this demo."}
         </p>
-        <p className="spending-amount money">{gbp(data.safe_amount)}</p>
+        <p className="spending-amount money" aria-label={gbp(data.safe_amount)}>
+          <CountUp value={data.safe_amount} />
+        </p>
       </div>
+      <MoneyStory data={data} />
       {data.breakdown.length > 0 && (
         <details className="spending-details">
           <summary>How it’s calculated</summary>

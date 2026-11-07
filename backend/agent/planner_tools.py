@@ -60,15 +60,19 @@ DEBT_TOOL = {
 GOAL_TOOL = {
     "name": "plan_savings_goal",
     "description": (
-        "Work out the monthly saving needed to reach a savings goal (e.g. a holiday) by a date, and whether "
-        "the user's forecast can afford it. Suggests a pot but does not create one."
+        "Plan saving up for a goal (a trip, a laptop, a deposit) by a target date. Use it whenever the user "
+        "wants something later rather than now, or asks 'what if I wait?'. Pass the amount they named and the "
+        "target date as YYYY-MM-DD counted from today (e.g. 'in a year' = same day next year). Returns the "
+        "monthly saving needed, whether the digital twin's forecast leaves that much spare each month "
+        "(feasible / available_monthly / shortfall), today's safe-to-spend for comparison, and `pot_to_create`: "
+        "the pot to suggest (name, monthly amount, target date). Nothing is created or moved."
     ),
     "input_schema": {
         "type": "object",
         "properties": {
-            "target_amount": {"type": "number"},
-            "target_date": {"type": "string", "format": "date"},
-            "goal_name": {"type": "string"},
+            "target_amount": {"type": "number", "description": "pounds to save in total, as the user said"},
+            "target_date": {"type": "string", "format": "date", "description": "YYYY-MM-DD, after today"},
+            "goal_name": {"type": "string", "description": "short name for the goal and its pot, e.g. 'Ibiza trip'"},
         },
         "required": ["target_amount", "target_date"],
         "additionalProperties": False,
@@ -225,8 +229,41 @@ def savings_goal(user_id: str, args: dict) -> dict:
         raise ValueError(f"goal_name must be 1-{MAX_NAME} characters")
     plan = plan_goal(user_id, float(amount), target, name.strip())  # ValueError if date not in future
     out = _goal_summary(plan)
-    out["numbers_used"] = _goal_numbers(plan)
+    numbers = _goal_numbers(plan)
+    out["pot_to_create"] = _pot_proposal(plan)
+    safe = _safe_to_spend_or_none(user_id)
+    if safe is not None:
+        out["safe_to_spend_today"] = safe
+        numbers["safe_to_spend"] = safe
+    out["numbers_used"] = numbers
     return out
+
+
+def _pot_proposal(plan) -> dict | None:
+    """The concrete pot the coach can suggest, feasible or not; never created here.
+
+    `suggested_pot` (from the planner) only appears when the plan fits the forecast. The coach
+    still needs something concrete to say when it doesn't ("start an 'Ibiza trip' pot, £133.34 a
+    month until ..."), alongside an honest "the twin doesn't show that much spare yet".
+    """
+    if plan.remaining <= 0 or plan.required_monthly <= 0:
+        return None
+    return {
+        "name": plan.goal_name,
+        "monthly_amount": plan.required_monthly,
+        "target_amount": plan.target_amount,
+        "target_date": plan.target_date.isoformat() if plan.target_date else None,
+        "fits_forecast": plan.feasible,
+        "created": False,
+    }
+
+
+def _safe_to_spend_or_none(user_id: str) -> float | None:
+    """Today's safe-to-spend for comparison only; the goal plan stands without it."""
+    try:
+        return fc.safe_to_spend(user_id, config.TODAY).safe_amount
+    except Exception:
+        return None
 
 
 def emergency_fund(user_id: str, args: dict) -> dict:

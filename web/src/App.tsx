@@ -8,26 +8,45 @@ import Icon from "./components/Icon";
 import PurchaseCheck from "./components/PurchaseCheck";
 import SafeToSpendCard from "./components/SafeToSpendCard";
 import SavingsPots from "./components/SavingsPots";
+import DepositIdeas from "./components/DepositIdeas";
+import TwinOdds from "./components/TwinOdds";
+import TimeTravel from "./components/TimeTravel";
+import Landing from "./screens/Landing";
+import AffordScreen from "./screens/AffordScreen";
+import Transactions from "./screens/Transactions";
+import Tips from "./screens/Tips";
+import SpendingForecast from "./components/SpendingForecast";
 import WhatIfPanel from "./components/WhatIfPanel";
 import { dateLabel, gbp } from "./format";
 import { mergeDemoPots, previewSafeToSpend } from "./potPreview";
 import type { Forecast, Pot, User } from "./types";
 import { buildWhatIf, type WhatIfSettings } from "./whatIf";
 import "./dashboard.css";
+import "./twin.css";
+import "./theme.css";
 
 const personas = [
   { name: "Sam", id: "sam" },
+  { name: "Alex", id: "alex" },
   { name: "Family", id: import.meta.env.VITE_FAMILY_USER_ID || "maya" },
 ] as const;
 type Persona = (typeof personas)[number];
 
 const sections = [
-  { id: "overview", label: "Overview", icon: "overview" },
-  { id: "forecast", label: "Forecast", icon: "forecast" },
-  { id: "pots", label: "Pots", icon: "pots" },
-  { id: "alerts", label: "Alerts", icon: "alerts" },
+  { id: "overview", label: "Home", icon: "overview" },
+  { id: "forecast", label: "Future", icon: "forecast" },
+  { id: "afford", label: "Afford?", icon: "afford" },
   { id: "coach", label: "Coach", icon: "coach" },
+  { id: "transactions", label: "Activity", icon: "activity" },
+  { id: "tips", label: "Tips", icon: "tips" },
 ] as const;
+// Sections rendered as their own screen instead of a panel on the dashboard.
+const screenIds = ["afford", "transactions", "tips", "start"] as const;
+type ScreenId = (typeof screenIds)[number];
+const screenFromHash = (): ScreenId | null => {
+  const id = window.location.hash.slice(1);
+  return (screenIds as readonly string[]).includes(id) ? (id as ScreenId) : null;
+};
 const householdSection = { id: "household", label: "Household", icon: "household" } as const;
 
 type RequestState<T> =
@@ -135,7 +154,7 @@ function ProfileSummary({ profile, persona }: { profile: User; persona: Persona 
 const loadForecast = (userId: string, signal: AbortSignal) => api.forecast(userId, 56, signal);
 const riskLabels = { low: "Low risk", medium: "Medium risk", high: "High risk" } as const;
 
-function ForecastContent({ forecast, mockForecast }: { forecast: Forecast; mockForecast: boolean }) {
+function ForecastContent({ forecast, mockForecast, userId }: { forecast: Forecast; mockForecast: boolean; userId: string }) {
   const [cursor, setCursor] = useState(0);
   const [selectedRiskDate, setSelectedRiskDate] = useState<string | null>(null);
   const [whatIfSettings, setWhatIfSettings] = useState<WhatIfSettings | null>(null);
@@ -151,7 +170,7 @@ function ForecastContent({ forecast, mockForecast }: { forecast: Forecast; mockF
 
   return (
     <>
-      {point ? (
+      {!mockForecast ? <TimeTravel userId={userId} /> : point ? (
         <div className="forecast-stage">
           <div className="forecast-summary">
             <div>
@@ -183,6 +202,7 @@ function ForecastContent({ forecast, mockForecast }: { forecast: Forecast; mockF
           />
         </div>
       ) : <p className="panel-empty">No forecast data yet.</p>}
+      {!mockForecast && <TwinOdds userId={userId} revision={forecast.points.length} />}
       {mockForecast && point && <WhatIfPanel settings={whatIfSettings} onChange={setWhatIfSettings} scenario={whatIf} />}
       {forecast.risk_events.length > 0 && (
         <>
@@ -281,18 +301,26 @@ function Dashboard({ persona, mock, demoPots, onDemoPotAdded }: {
           }}
         </ApiPanel>
         <ApiPanel id="forecast" title="Time travel" userId={persona.id} load={loadForecast} revision={forecastRevision}>
-          {(forecast) => <ForecastContent forecast={forecast} mockForecast={mock?.forecast === true} />}
+          {(forecast) => <ForecastContent forecast={forecast} mockForecast={mock?.forecast === true} userId={persona.id} />}
         </ApiPanel>
         <ApiPanel id="pots" title="Savings pots" userId={persona.id} load={api.pots} revision={potRevision}>
           {(pots) => (
-            <SavingsPots
-              pots={mergeDemoPots(pots, visibleDemoPots)}
-              userId={persona.id}
-              onPotAdded={refreshAfterSave}
-              demoOnly={mock?.data}
-            />
+            <>
+              <SavingsPots
+                pots={mergeDemoPots(pots, visibleDemoPots)}
+                userId={persona.id}
+                onPotAdded={refreshAfterSave}
+                demoOnly={mock?.data}
+              />
+              {mock?.forecast === false && <DepositIdeas userId={persona.id} revision={potRevision} />}
+            </>
           )}
         </ApiPanel>
+        {mock?.forecast === false && (
+          <ApiPanel id="month" title="This month’s spending" userId={persona.id} load={api.spending} revision={potRevision}>
+            {(spending) => <SpendingForecast data={spending} />}
+          </ApiPanel>
+        )}
         <ApiPanel id="alerts" title="Alerts" userId={persona.id} load={api.alerts} revision={forecastRevision}>
           {(alerts) => <AlertList alerts={alerts} />}
         </ApiPanel>
@@ -339,6 +367,37 @@ function SectionNav({ showHousehold }: { showHousehold: boolean }) {
 export default function App() {
   const [persona, setPersona] = useState<Persona>(personas[0]);
   const [health, setHealth] = useState<ApiHealth>();
+  const [screen, setScreen] = useState<ScreenId | null>(() => {
+    // First visit in this tab starts at the persona picker, like the mockup.
+    try {
+      if (!window.location.hash && !sessionStorage.getItem("fintime-started")) return "start";
+    } catch { /* storage unavailable: skip the picker */ }
+    return screenFromHash();
+  });
+
+  useEffect(() => {
+    const sync = () => setScreen(screenFromHash());
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+
+  useEffect(() => {
+    // Screens open at the top; dashboard anchors (#forecast, #coach…) scroll once the dashboard has mounted.
+    const id = window.location.hash.slice(1);
+    const timer = window.setTimeout(() => {
+      if (screen || !id || id === "overview") window.scrollTo({ top: 0 });
+      else document.getElementById(id)?.scrollIntoView({ block: "start" });
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [screen]);
+
+  function pickPersona(userId: string) {
+    const match = personas.find((p) => p.id === userId) ?? personas[0];
+    setPersona(match);
+    try { sessionStorage.setItem("fintime-started", "1"); } catch { /* ignore */ }
+    window.location.hash = "overview";
+    setScreen(null);
+  }
   const [demoPots, setDemoPots] = useState<Partial<Record<Persona["name"], Pot[]>>>({});
 
   useEffect(() => {
@@ -380,7 +439,11 @@ export default function App() {
         </div>
       </header>
       <main className="app-shell" id="overview" tabIndex={-1}>
-        <Dashboard
+        {screen === "start" && <Landing onPick={(userId) => pickPersona(userId)} />}
+        {screen === "afford" && <AffordScreen key={persona.id} userId={persona.id} onAskCoach={() => { window.location.hash = "coach"; }} />}
+        {screen === "transactions" && <Transactions key={persona.id} userId={persona.id} />}
+        {screen === "tips" && <Tips key={persona.id} userId={persona.id} />}
+        {screen === null && <Dashboard
           key={persona.name}
           persona={persona}
           mock={health?.mock}
@@ -389,7 +452,7 @@ export default function App() {
             ...previous,
             [persona.name]: mergeDemoPots(previous[persona.name] ?? [], [pot]),
           }))}
-        />
+        />}
       </main>
     </>
   );

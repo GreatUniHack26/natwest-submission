@@ -20,6 +20,12 @@ function parsePence(value: string): number | null {
     : null;
 }
 
+// Demo "today" matches the backend's fixed DEMO_TODAY so countdowns agree with the forecast.
+const DEMO_TODAY = Date.parse(import.meta.env.VITE_DEMO_TODAY ?? "2026-11-07");
+function daysUntil(date: string) {
+  return Math.round((Date.parse(date) - DEMO_TODAY) / 86_400_000);
+}
+
 function makePotId() {
   return Array.from(crypto.getRandomValues(new Uint32Array(4)), (part) =>
     part.toString(16).padStart(8, "0"),
@@ -171,7 +177,12 @@ export default function SavingsPots({ pots, userId, demoOnly, onPotAdded }: {
             <li key={pot.id} className="pot-row savings-pot-row">
               <div>
                 <strong>{pot.name}</strong>
-                {pot.due_date && <p>Due <time dateTime={pot.due_date}>{dateLabel(pot.due_date)}</time></p>}
+                <p>
+                  <span className="pot-lock">Protected</span>
+                  {pot.due_date
+                    ? <> · due <time dateTime={pot.due_date}>{dateLabel(pot.due_date)}</time>{daysUntil(pot.due_date) > 0 && ` (in ${daysUntil(pot.due_date)} days)`}</>
+                    : " · for emergencies"}
+                </p>
               </div>
               <strong className="money">{gbp(pot.amount)}</strong>
             </li>

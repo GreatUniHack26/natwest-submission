@@ -76,3 +76,16 @@
 
 .chat-delivery .chat-retry { margin-top: 0; }
 .chat-delivery .chat-retry:disabled { color: var(--muted); background: var(--tab-surface); }
+
+.mic-button { background: var(--tab-surface); color: var(--tint); }
+.mic-button:not(:disabled):hover { background: var(--tab-hover); }
+.mic-button[data-listening="true"] {
+  background: var(--danger);
+  color: var(--on-plum);
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(141 49 84 / 0.45); }
+  50% { box-shadow: 0 0 0 0.5rem rgb(141 49 84 / 0); }
+}
+@media (prefers-reduced-motion: reduce) { .mic-button[data-listening="true"] { animation: none; } }

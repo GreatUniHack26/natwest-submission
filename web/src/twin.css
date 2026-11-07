@@ -1,0 +1,334 @@
+/* Digital-twin panels: money story, idle-money deposits, month spending forecast. */
+:root { --ease-out: cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ---------- Money story ---------- */
+.money-story { margin-top: 1.125rem; }
+.money-story-bar {
+  display: flex;
+  height: 0.875rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--inset);
+}
+.story-seg {
+  display: block;
+  width: var(--w);
+  height: 100%;
+  transform-origin: left;
+  animation: grow-x 900ms var(--ease-out) both;
+  animation-delay: calc(var(--i) * 140ms + 150ms);
+}
+.story-seg + .story-seg { border-left: 2px solid var(--surface); }
+.story-pots { background: var(--pots); }
+.story-bills { background: var(--bills); }
+.story-safe { background: var(--safe); }
+
+.money-story-legend { display: grid; gap: 0.375rem; margin-top: 0.875rem; font-size: 0.9375rem; }
+.money-story-legend div { display: flex; justify-content: space-between; gap: 1rem; }
+.money-story-legend dt { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--muted); }
+.money-story-legend dd { margin: 0; font-weight: 650; }
+.money-story-legend .story-total { padding-top: 0.5rem; border-top: 1px solid var(--line); }
+.money-story-legend .story-total dt { color: var(--text); font-weight: 650; }
+.money-story-legend .story-total dd { color: var(--safe); }
+.dot { width: 0.625rem; height: 0.625rem; border-radius: 50%; flex: none; }
+
+/* ---------- Pots: protected tag + idle money ---------- */
+.pot-lock {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  background: var(--tab-surface);
+  color: var(--tint);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.deposit-ideas {
+  margin-top: 1.25rem;
+  padding: 1rem 1.125rem;
+  border-radius: 0.875rem;
+  background: var(--safe-surface);
+  border: 1px solid var(--line);
+  animation: rise 600ms var(--ease-out) both 250ms;
+}
+.deposit-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.deposit-head h3 { font-size: 1.0625rem; font-weight: 730; letter-spacing: -0.015em; }
+.deposit-total { color: var(--muted); font-size: 0.875rem; }
+.deposit-total strong { color: var(--safe); font-size: 1.25rem; }
+.deposit-lede { margin-top: 0.375rem; color: var(--muted); font-size: 0.875rem; }
+.deposit-list { display: grid; gap: 0.5rem; margin: 0.75rem 0 0; padding: 0; list-style: none; }
+.deposit-list li {
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.625rem;
+  background: var(--surface);
+  animation: rise 500ms var(--ease-out) both;
+}
+.deposit-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.deposit-row p { color: var(--muted); font-size: 0.8125rem; }
+.deposit-earn { display: grid; justify-items: end; text-align: end; }
+.deposit-earn strong { color: var(--safe); font-size: 1.0625rem; }
+.deposit-earn span { color: var(--muted); font-size: 0.75rem; }
+.deposit-caution { margin-top: 0.375rem; color: var(--warning); font-size: 0.8125rem; }
+.deposit-disclaimer { margin-top: 0.625rem; color: var(--muted); font-size: 0.75rem; }
+
+/* ---------- Month spending forecast ---------- */
+.month-summary { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-top: 0.75rem; }
+.month-label { color: var(--muted); font-size: 0.875rem; }
+.month-amount { font-size: 2rem; font-weight: 760; letter-spacing: -0.03em; }
+.month-usual { display: grid; justify-items: end; gap: 0.375rem; color: var(--muted); font-size: 0.875rem; text-align: end; }
+.month-progress {
+  position: relative;
+  min-width: 7.5rem;
+  padding-top: 0.5rem;
+  font-size: 0.75rem;
+}
+.month-progress::before, .month-progress::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 0.25rem;
+  border-radius: 999px;
+}
+.month-progress::before { right: 0; background: var(--inset); }
+.month-progress::after { width: var(--p); background: var(--control-line); animation: grow-x 900ms var(--ease-out) both; transform-origin: left; }
+
+.month-alarms { display: grid; gap: 0.5rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.month-alarms li {
+  display: flex;
+  gap: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.75rem;
+  background: var(--danger-surface);
+  color: var(--danger);
+  font-size: 0.875rem;
+  font-weight: 560;
+  animation: rise 500ms var(--ease-out) both 200ms;
+}
+.alarm-dot {
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-top: 0.3rem;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: alarm-pulse 1.6s ease-out infinite;
+}
+
+.month-bars { display: grid; gap: 0.875rem; margin: 1.125rem 0 0; padding: 0; list-style: none; }
+.month-bars li { animation: rise 500ms var(--ease-out) both; animation-delay: calc(var(--i) * 70ms + 150ms); }
+.month-bar-head { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9375rem; }
+.month-bar-figures { margin-inline-start: auto; font-weight: 650; }
+.month-bar-figures span { color: var(--muted); font-weight: 500; }
+.month-chip {
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--safe-surface);
+  color: var(--safe);
+}
+.month-chip[data-status="over"] { background: var(--danger-surface); color: var(--danger); }
+.month-chip[data-status="watch"] { background: var(--warning-surface); color: var(--warning); }
+
+.month-track { position: relative; height: 0.625rem; margin-top: 0.4375rem; border-radius: 999px; background: var(--inset); }
+.month-projected, .month-spent {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: var(--w);
+  border-radius: 999px;
+  transform-origin: left;
+  animation: grow-x 1000ms var(--ease-out) both 250ms;
+}
+.month-projected {
+  background: var(--line);
+}
+.month-spent { background: var(--tint); animation-delay: 150ms; }
+[data-status="over"] .month-spent { background: var(--danger); }
+[data-status="over"] .month-projected { background: var(--danger-surface); }
+.month-typical {
+  position: absolute;
+  top: -0.1875rem;
+  bottom: -0.1875rem;
+  left: var(--x);
+  width: 2px;
+  border-radius: 1px;
+  background: var(--text);
+  opacity: 0.55;
+}
+.month-key { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; color: var(--muted); font-size: 0.75rem; }
+.month-key span { display: inline-flex; align-items: center; gap: 0.375rem; }
+.month-key i { display: inline-block; width: 0.875rem; height: 0.5rem; border-radius: 999px; }
+.key-spent { background: var(--tint); }
+.key-projected { background: var(--line); }
+.key-typical { width: 2px !important; height: 0.75rem !important; background: var(--text); opacity: 0.55; }
+
+/* ---------- Motion ---------- */
+@keyframes grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes rise { from { opacity: 0; transform: translateY(0.625rem); } to { opacity: 1; transform: none; } }
+@keyframes alarm-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(200 16 46 / 0.45); }
+  70%, 100% { box-shadow: 0 0 0 0.5rem rgb(200 16 46 / 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-seg, .deposit-ideas, .deposit-list li, .month-progress::after, .month-alarms li,
+  .month-bars li, .month-projected, .month-spent, .alarm-dot { animation: none !important; }
+}
+
+/* ---------- Monte Carlo twin ---------- */
+.twin-odds {
+  margin-top: 1rem;
+  padding: 1rem 1.125rem;
+  border-radius: 0.875rem;
+  color: #FFFFFF;
+  background: var(--plum);
+  animation: rise 600ms var(--ease-out) both 200ms;
+}
+.twin-badge { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--c-lavender); }
+.twin-badge strong { color: #fff; }
+.twin-spinner {
+  width: 0.875rem; height: 0.875rem; border-radius: 50%;
+  border: 2px solid rgb(255 255 255 / 25%); border-top-color: #fff;
+  animation: spin 1.4s linear 3, settle 0.3s ease-out 4.2s forwards;
+}
+.twin-stats { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1rem; margin-top: 0.875rem; }
+.twin-stat-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-lavender); }
+.twin-odds-row { display: flex; gap: 0.75rem; margin: 0.5rem 0 0; padding: 0; list-style: none; }
+.twin-odds-row li {
+  display: grid; justify-items: center; gap: 0.125rem; position: relative;
+  font-size: 0.75rem; color: var(--c-lavender);
+  animation: rise 500ms var(--ease-out) both; animation-delay: calc(var(--i) * 120ms + 300ms);
+}
+.twin-odds-row strong { position: absolute; top: 1.05rem; color: #fff; font-size: 0.9375rem; }
+.twin-ring {
+  --deg: calc(var(--c) * 360deg);
+  width: 3.25rem; height: 3.25rem; border-radius: 50%;
+  /* progress ring (a chart, not decoration) */
+  background:
+    radial-gradient(closest-side, var(--plum) 76%, transparent 78% 100%),
+    conic-gradient(var(--ring) var(--deg), rgb(255 255 255 / 16%) 0);
+  --ring: #FFFFFF;
+}
+[data-level="medium"] .twin-ring { --ring: var(--c-warning); }
+[data-level="high"] .twin-ring { --ring: var(--c-danger); }
+.twin-big { margin-top: 0.375rem; font-size: 2rem; font-weight: 760; letter-spacing: -0.03em; color: #fff; }
+.twin-big span { font-size: 1rem; font-weight: 600; color: var(--c-lavender); }
+.twin-note { font-size: 0.75rem; color: var(--c-lavender); }
+.twin-callout { margin-top: 0.875rem; padding-top: 0.75rem; border-top: 1px solid rgb(255 255 255 / 16%); font-size: 0.875rem; }
+.twin-odds .forecast-assumptions { margin-top: 0.5rem; color: var(--c-lavender); }
+.twin-odds .forecast-assumptions summary { color: #fff; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes settle { to { border-color: #FFFFFF; } }
+@media (max-width: 30rem) { .twin-stats { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .twin-odds, .twin-odds-row li, .twin-spinner { animation: none !important; } }
+
+/* ---------- Time travel (fan chart, story, what-if) ---------- */
+.tt { display: grid; gap: 0.875rem; margin-top: 0.75rem; }
+.tt-story {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 1rem;
+  padding: 1rem 1.125rem;
+  border-radius: var(--radius);
+  background: var(--tab-surface);
+}
+.tt-date { color: var(--tint); font-weight: 700; font-size: 0.875rem; }
+.tt-amount { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.03em; color: var(--text); transition: color 200ms; }
+.tt-amount[data-negative="true"] { color: var(--danger); }
+.tt-range { color: var(--muted); font-size: 0.8125rem; }
+.tt-facts { display: grid; align-content: start; gap: 0.25rem; font-size: 0.875rem; }
+.tt-chance { display: inline-flex; align-items: baseline; gap: 0.375rem; font-weight: 600; }
+.tt-chance strong { font-family: var(--font-display); font-size: 1.25rem; }
+.tt-chance[data-level="high"] strong { color: var(--danger); }
+.tt-chance[data-level="medium"] strong { color: var(--warning); }
+.tt-chance[data-level="low"] strong { color: var(--safe); }
+.tt-chance[data-level="high"]::before { content: "▲"; color: var(--danger); font-size: 0.75rem; }
+.tt-flag { color: var(--tint); font-weight: 700; }
+.tt-flag::before { content: "● "; color: var(--pots); }
+.tt-what-if-value strong { color: var(--text); }
+.tt-since, .tt-next, .tt-today { color: var(--muted); }
+.tt-in { color: var(--safe); font-weight: 700; }
+.tt-out { color: var(--text); font-weight: 700; }
+.tt-today { color: var(--text); font-weight: 600; }
+
+.tt-chart { width: 100%; overflow: hidden; touch-action: pan-y; }
+.tt-chart svg { display: block; cursor: crosshair; user-select: none; }
+.tt-grid line { stroke: var(--line); stroke-width: 1; }
+.tt-grid text, .tt-month { fill: var(--muted); font-size: 11px; font-family: var(--font-body); }
+.tt-danger { fill: var(--danger-surface); opacity: 0.6; }
+.tt-zero { stroke: var(--danger); stroke-dasharray: 4 4; stroke-width: 1.25; }
+.tt-fan { animation: fade-in 900ms var(--ease-out) both 200ms; }
+.tt-pots { fill: none; stroke: var(--accent); stroke-width: 1.75; stroke-dasharray: 2 4; stroke-linecap: round; }
+.tt-median {
+  fill: none; stroke: var(--tint); stroke-width: 2.75; stroke-linejoin: round; stroke-linecap: round;
+  stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1400ms var(--ease-out) forwards 150ms;
+}
+.tt-median-danger { stroke: var(--danger); }
+.tt-scenario {
+  fill: none; stroke: var(--text); stroke-width: 2.25; stroke-linejoin: round;
+  stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 900ms var(--ease-out) forwards; opacity: 0.8;
+}
+.tt-event { stroke: var(--surface); stroke-width: 1.5; animation: pop 400ms var(--ease-out) both; animation-delay: calc(var(--i) * 6ms + 600ms); }
+.tt-event-income { fill: var(--safe); }
+.tt-event-bill { fill: var(--warning-fill); }
+.tt-event-pot { fill: var(--pots); }
+.tt-risk-pulse { fill: none; stroke: var(--danger); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: ring 1.8s ease-out infinite 1.4s; opacity: 0; }
+.tt-cursor { stroke: var(--plum); stroke-width: 1.25; stroke-dasharray: 3 3; }
+.tt-cursor-dot { fill: var(--surface); stroke: var(--tint); stroke-width: 3; transition: cy 120ms ease-out; }
+.tt-cursor-scenario { fill: var(--surface); stroke: var(--text); stroke-width: 2.5; }
+
+.tt-slider input { width: 100%; accent-color: var(--tint); min-height: 44px; }
+.tt-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; padding: 0; margin: -0.25rem 0 0; list-style: none; color: var(--muted); font-size: 0.75rem; }
+.tt-legend li { display: inline-flex; align-items: center; gap: 0.375rem; }
+.tt-legend i { display: inline-block; width: 1rem; height: 0.5rem; border-radius: 999px; }
+.lg-median { background: var(--tint); height: 3px !important; }
+.lg-fan { background: var(--tab-hover); }
+.lg-pots { height: 0 !important; border-top: 2px dotted var(--accent); }
+.lg-income { width: 0.5rem !important; height: 0.5rem !important; background: var(--safe); }
+.lg-bill { width: 0.5rem !important; height: 0.5rem !important; background: var(--warning-fill); }
+.lg-scenario { background: var(--text); height: 3px !important; }
+
+.tt-whatif { padding-top: 0.875rem; border-top: 1px solid var(--line); }
+.tt-whatif-title { font-family: var(--font-display); font-weight: 700; font-size: 0.9375rem; }
+.tt-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.tt-chip {
+  min-height: 44px; padding: 0 1rem; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--tint); font-weight: 700; font-size: 0.875rem;
+  transition: background-color var(--press), transform var(--press), border-color var(--press);
+}
+.tt-chip:hover { background: var(--tab-surface); }
+.tt-chip:active { transform: scale(0.97); }
+.tt-chip[aria-pressed="true"] { background: var(--tint); border-color: var(--tint); color: var(--on-plum); }
+.tt-custom { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; margin-top: 0.625rem; }
+.tt-custom label { display: grid; gap: 0.25rem; color: var(--muted); font-size: 0.75rem; font-weight: 600; }
+.tt-custom input {
+  min-height: 44px; width: 9rem; padding: 0 0.75rem; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--text);
+}
+.tt-try { background: var(--tab-surface); }
+.tt-whatif-result {
+  margin-top: 0.75rem; padding: 0.75rem 0.875rem; border-radius: var(--radius);
+  background: var(--danger-surface); font-size: 0.875rem; animation: rise 400ms var(--ease-out) both;
+}
+.tt-clear { margin-inline-start: 0.5rem; border: 0; background: none; color: var(--tint); font-weight: 700; text-decoration: underline; min-height: 44px; }
+
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ring { 0% { opacity: 0.9; transform: scale(0.6); } 100% { opacity: 0; transform: scale(2.4); } }
+.tt-event { transform-box: fill-box; transform-origin: center; }
+
+@media (max-width: 34rem) {
+  .tt-story { grid-template-columns: 1fr; }
+  .tt-amount { font-size: 2rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tt-fan, .tt-event, .tt-risk-pulse, .tt-whatif-result { animation: none !important; }
+  .tt-median, .tt-scenario { animation: none !important; stroke-dasharray: none; stroke-dashoffset: 0; }
+}

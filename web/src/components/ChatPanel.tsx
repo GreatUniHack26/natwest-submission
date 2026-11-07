@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api } from "../api";
+import { api, type ChatTurn } from "../api";
 import { gbp } from "../format";
 import type { ChatReply, Tone } from "../types";
 import Icon from "./Icon";
+import VoiceCoach from "./VoiceCoach";
 import "./ChatPanel.css";
 
 const starterQuestion = "Can I afford a £30 shirt?";
@@ -25,7 +26,7 @@ interface Message {
 
 type Exchange = Message & (
   | { status: "pending" | "failed" }
-  | { status: "answered"; reply: ChatReply; autoPlay: boolean }
+  | { status: "answered"; reply: ChatReply }
 );
 
 function FiguresUsed({ figures }: { figures: ChatReply["numbers_used"] }) {
@@ -50,17 +51,15 @@ function FiguresUsed({ figures }: { figures: ChatReply["numbers_used"] }) {
   );
 }
 
-function ReplyAudio({ src, autoPlay }: { src: string; autoPlay: boolean }) {
-  const [unavailable, setUnavailable] = useState(false);
+const HISTORY_TURNS = 6;
 
-  if (unavailable) return <p className="chat-audio-note">Audio couldn’t be played.</p>;
-
-  return (
-    <audio aria-label="Play coach reply" controls autoPlay={autoPlay} preload="none" src={src}
-      onError={() => setUnavailable(true)}>
-      Your browser can’t play this audio.
-    </audio>
-  );
+function historyFrom(exchanges: Exchange[], beforeId: number): ChatTurn[] {
+  return exchanges
+    .filter((exchange) => exchange.id < beforeId && exchange.status === "answered")
+    .slice(-HISTORY_TURNS)
+    .flatMap((exchange) => exchange.status === "answered"
+      ? [{ role: "user" as const, content: exchange.question }, { role: "assistant" as const, content: exchange.reply.text }]
+      : []);
 }
 
 export default function ChatPanel({ userId, sampleReply = false }: { userId: string; sampleReply?: boolean }) {
@@ -69,8 +68,9 @@ export default function ChatPanel({ userId, sampleReply = false }: { userId: str
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const nextId = useRef(0);
   const composer = useRef<HTMLInputElement>(null);
-  const autoPlayToggle = useRef<HTMLInputElement>(null);
   const activeRequest = useRef<AbortController | null>(null);
+  const exchangesRef = useRef<Exchange[]>([]);
+  exchangesRef.current = exchanges;
   const pending = exchanges.some((exchange) => exchange.status === "pending");
 
   useEffect(() => () => activeRequest.current?.abort(), []);
@@ -81,16 +81,16 @@ export default function ChatPanel({ userId, sampleReply = false }: { userId: str
     const controller = new AbortController();
     activeRequest.current = controller;
     const queued: Exchange = { ...message, status: "pending" };
+    const history = historyFrom(exchangesRef.current, message.id);
     setExchanges((previous) => retry
       ? previous.map((exchange) => exchange.id === message.id ? queued : exchange)
       : [...previous, queued]);
 
     try {
-      const reply = await api.chat(userId, message.question, message.tone, controller.signal);
+      const reply = await api.chat(userId, message.question, message.tone, controller.signal, history);
       if (!controller.signal.aborted) {
-        const autoPlay = autoPlayToggle.current?.checked ?? false;
         setExchanges((previous) => previous.map((exchange) => exchange.id === message.id
-          ? { ...message, status: "answered", reply, autoPlay }
+          ? { ...message, status: "answered", reply }
           : exchange));
       }
     } catch {
@@ -129,6 +129,7 @@ export default function ChatPanel({ userId, sampleReply = false }: { userId: str
       <p className="coach-description">
         {sampleReply ? "Demo replies use the original sample figures." : "Ask about a purchase, a bill, or anything in your forecast."}
       </p>
+      <VoiceCoach userId={userId} tone={tone} />
       <div className="chat-options">
         {exchanges.length === 0 && (
           <button className="chat-starter" type="button" onClick={() => {
@@ -138,10 +139,6 @@ export default function ChatPanel({ userId, sampleReply = false }: { userId: str
             {starterQuestion}
           </button>
         )}
-        <label className="chat-voice-toggle">
-          <input type="checkbox" ref={autoPlayToggle} />
-          Autoplay voice replies
-        </label>
       </div>
       <div className="chat-log" role="log" aria-label="Conversation">
         {exchanges.map((exchange) => (
@@ -151,7 +148,6 @@ export default function ChatPanel({ userId, sampleReply = false }: { userId: str
               <div className="chat-answer">
                 <p dir="auto">{exchange.reply.text}</p>
                 <FiguresUsed figures={exchange.reply.numbers_used} />
-                {exchange.reply.audio_url && <ReplyAudio src={exchange.reply.audio_url} autoPlay={exchange.autoPlay} />}
               </div>
             )}
             {exchange.status === "pending" && <p className="chat-pending">Waiting for your coach…</p>}
@@ -173,7 +169,8 @@ export default function ChatPanel({ userId, sampleReply = false }: { userId: str
       </div>
       <form className="chat-form" onSubmit={send}>
         <input ref={composer} aria-label="Message for your coach" enterKeyHint="send"
-          value={input} onChange={(event) => setInput(event.target.value)} placeholder="Write a message" />
+          value={input} onChange={(event) => setInput(event.target.value)}
+          placeholder="Or type a message" />
         <button className="send-button" type="submit" aria-label="Send message" disabled={pending || !input.trim()}>
           <Icon name="send" />
         </button>

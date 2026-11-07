@@ -327,7 +327,8 @@ def test_six_questions_across_three_tones_adhere_to_guardrails(monkeypatch, ques
     # 1. System prompt passed to LLM matches build_system_prompt(tone)
     assert len(captured_calls) >= 1
     expected_system_prompt = orchestrator.build_system_prompt(tone)
-    assert captured_calls[0]["system_prompt"] == expected_system_prompt
+    # The tone prompt comes first; a live-context section may follow it.
+    assert captured_calls[0]["system_prompt"].startswith(expected_system_prompt)
 
     lower_reply = reply.text.lower()
 

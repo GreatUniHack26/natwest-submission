@@ -53,3 +53,28 @@ def what_if(user_id: str, req: WhatIfRequest):
     if config.MOCK_FORECAST:
         raise HTTPException(503, 'What-if scenarios require real forecast mode')
     return _call(fc.forecast, user_id, req.days, req.overrides)
+
+
+@router.get('/spending-forecast')
+def get_spending_forecast(user_id: str):
+    return _call(fc.spending_forecast, user_id)
+
+
+@router.get('/deposit-ideas')
+def get_deposit_ideas(user_id: str):
+    return _call(fc.deposit_ideas, user_id)
+
+
+@router.get('/simulations')
+def get_simulations(user_id: str, days: int = Query(90, ge=7, le=180), sims: int = Query(1000, ge=100, le=5000)):
+    return _call(fc.simulate_futures, user_id, days, sims)
+
+
+class TimelineRequest(BaseModel):
+    days: int = Field(default=90, ge=7, le=180, strict=True)
+    overrides: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post('/timeline')
+def post_timeline(user_id: str, req: TimelineRequest):
+    return _call(fc.timeline, user_id, req.days, req.overrides or None)

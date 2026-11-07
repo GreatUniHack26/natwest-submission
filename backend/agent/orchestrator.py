@@ -10,6 +10,7 @@ Guardrails: never push a purchase; always state the numbers used; if a tool fail
 """
 import json
 import math
+import os
 import re
 from pathlib import Path
 from typing import Any, Optional
@@ -17,7 +18,7 @@ from typing import Any, Optional
 import httpx
 
 from backend import config, data
-from backend.agent import fallback, tools, voice
+from backend.agent import context, fallback, tools, voice
 from contracts.schemas import ChatReply, Tone
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
@@ -193,7 +194,13 @@ def _parse_llm_response(response: dict[str, Any]) -> tuple[list[str], list[dict[
 
 
 def _safe_speak(text: str) -> Optional[str]:
-    """Call voice.speak without ever breaking the chat response."""
+    """Call voice.speak without ever breaking the chat response.
+
+    Live voice runs through the full-duplex ElevenLabs agent (backend/agent/convai.py);
+    per-reply MP3 clips for text chat are off unless TEXT_CHAT_TTS=1.
+    """
+    if os.getenv("TEXT_CHAT_TTS", "0") != "1":
+        return None
     try:
         return voice.speak(text)
     except Exception:
@@ -209,7 +216,50 @@ def _build_reply(text: str, numbers_used: dict[str, float]) -> ChatReply:
     )
 
 
-def run_chat(user_id: str, message: str, tone: Optional[Tone] = None) -> ChatReply:
+MAX_HISTORY_MESSAGES = 12
+
+
+def _history_messages(history: Optional[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Sanitise client-sent prior turns into alternating Messages API turns ending with assistant."""
+    cleaned: list[dict[str, Any]] = []
+    for turn in (history or [])[-MAX_HISTORY_MESSAGES:]:
+        role = turn.get("role") if isinstance(turn, dict) else None
+        content = turn.get("content") if isinstance(turn, dict) else None
+        if role not in ("user", "assistant") or not isinstance(content, str) or not content.strip():
+            continue
+        if cleaned and cleaned[-1]["role"] == role:
+            cleaned[-1]["content"] += "\n" + content.strip()
+        else:
+            cleaned.append({"role": role, "content": content.strip()})
+    while cleaned and cleaned[0]["role"] != "user":
+        cleaned.pop(0)
+    while cleaned and cleaned[-1]["role"] != "assistant":
+        cleaned.pop()
+    return cleaned
+
+
+def _context_numbers(user_id: str) -> dict[str, float]:
+    """Headline figures from the live context, so quoting them counts as verified."""
+    try:
+        money = context.build_snapshot(user_id).get("money_today", {})
+        return {k: float(v) for k, v in money.items() if isinstance(v, (int, float)) and math.isfinite(v)}
+    except Exception:
+        return {}
+
+
+def _context_section(user_id: str) -> str:
+    try:
+        return context.render(user_id)
+    except Exception:
+        return ""
+
+
+def run_chat(
+    user_id: str,
+    message: str,
+    tone: Optional[Tone] = None,
+    history: Optional[list[dict[str, Any]]] = None,
+) -> ChatReply:
     resolved_tone = resolve_tone(user_id, tone)
 
     # In explicit DEMO_MODE, serve snapshot-verified cached or deterministic tool-backed reply.
@@ -222,11 +272,15 @@ def run_chat(user_id: str, message: str, tone: Optional[Tone] = None) -> ChatRep
             return _build_reply(demo_reply.text, demo_reply.numbers_used)
 
     system_prompt = build_system_prompt(resolved_tone)
+    live_context = _context_section(user_id)
+    if live_context:
+        system_prompt = f"{system_prompt}\n\n{live_context}"
     model = config.LLM_MODEL
     active_tools = tools.get_active_tools()
 
-    messages: list[dict[str, Any]] = [{"role": "user", "content": message}]
+    messages: list[dict[str, Any]] = [*_history_messages(history), {"role": "user", "content": message}]
     numbers_used: dict[str, float] = {}
+    context_numbers = _context_numbers(user_id) if live_context else {}
     had_tool_error = False
 
     for round_idx in range(MAX_TOOL_ROUNDS + 1):
@@ -259,7 +313,7 @@ def run_chat(user_id: str, message: str, tone: Optional[Tone] = None) -> ChatRep
             if not reply_text:
                 apology = TOOL_FAILURE_APOLOGY if had_tool_error else LLM_UNAVAILABLE_APOLOGY
                 return _build_reply(apology, numbers_used)
-            if had_tool_error and _has_unverified_currency(reply_text, numbers_used):
+            if had_tool_error and _has_unverified_currency(reply_text, {**context_numbers, **numbers_used}):
                 return _build_reply(TOOL_FAILURE_APOLOGY, numbers_used)
             final_reply = _build_reply(reply_text, numbers_used)
             if not had_tool_error:

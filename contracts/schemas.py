@@ -112,9 +112,15 @@ class SimulateRequest(BaseModel):
     date: Optional[dt.date] = None  # default: today
 
 
+class ChatTurn(BaseModel):  # prior conversation turn, sent back by the client for context
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=4000)
+
+
 class ChatRequest(BaseModel):
     message: str
     tone: Optional[Tone] = None
+    history: list[ChatTurn] = Field(default_factory=list, max_length=20)
 
 
 class ChatReply(BaseModel):

@@ -6,6 +6,7 @@ from typing import Any
 from backend import config, rules
 from backend import forecast as fc
 from backend.agent import benchmark_adapter, planner_tools
+from backend.integrations import news
 
 TOOLS = [
     {
@@ -52,6 +53,34 @@ TOOLS = [
     {
         "name": "get_tips",
         "description": "General savings and tax-efficiency information relevant to the user's spending patterns (information, not regulated advice).",
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "name": "get_economic_news",
+        "description": "Recent UK cost-of-living and economy news (energy, fuel, rates, inflation, wages, benefits) gathered by FinTime's n8n news workflow. Use for context on future costs; headlines are third-party information, not FinTime calculations.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"topic": {"type": "string"}, "limit": {"type": "integer"}},
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "get_spending_forecast",
+        "description": "This month's spending per category from the digital twin: spent so far, projected month-end, usual month, and overspend alarms.",
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "name": "run_twin_simulations",
+        "description": "Run the Monte Carlo digital twin: 1,000 simulated futures with realistic income timing, spending habits and unexpected costs. Returns the chance of going below zero within 30/60/90 days, the chance of dipping into pots, the date it becomes a coin flip, and runway (days the money lasts if income stopped today).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"horizon_days": {"type": "integer"}},
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "get_deposit_ideas",
+        "description": "Short-term deposit ideas for ring-fenced pots: how much idle pot money could earn in an instant-access saver before it is due (illustrative rate, not a product offer).",
         "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
     *planner_tools.PLANNER_TOOLS,
@@ -148,11 +177,40 @@ def run_tool(user_id: str, name: str, args: dict):
             raise ValueError("horizon_days must be an integer between 1 and 365")
         return fc.forecast(user_id, horizon_days).model_dump(mode="json")
 
+    if name == "get_spending_forecast":
+        return fc.spending_forecast(user_id)
+
+    if name == "run_twin_simulations":
+        horizon = validated.get("horizon_days") or 90
+        if not _is_int(horizon) or not 7 <= horizon <= 180:
+            raise ValueError("horizon_days must be an integer between 7 and 180")
+        result = fc.simulate_futures(user_id, horizon)
+        result.pop("points", None)
+        # Flatten odds into verifiable percentages so they reach numbers_used and the model never converts fractions.
+        for days, chance in result.get("chance_below_zero_within", {}).items():
+            result[f"chance_below_zero_{days}d_percent"] = round(chance * 100, 1)
+        result["chance_dip_into_pots_percent"] = round(result.get("chance_dip_into_pots", 0) * 100, 1)
+        return result
+
+    if name == "get_deposit_ideas":
+        return fc.deposit_ideas(user_id)
+
     if name == "get_tips":
         return [t.model_dump(mode="json") for t in rules.all_tips(user_id)]
 
     if name == "get_benchmark":
         return benchmark_adapter.run_get_benchmark(user_id, validated)
+
+    if name == "get_economic_news":
+        topic = validated.get("topic")
+        if topic is not None and not isinstance(topic, str):
+            raise ValueError("topic must be a string")
+        limit = validated.get("limit", 6)
+        if limit is None:
+            limit = 6
+        if not _is_int(limit) or limit < 1 or limit > 10:
+            raise ValueError("limit must be an integer between 1 and 10")
+        return news.get_economic_news(topic=topic, limit=limit)
 
     if name == "plan_debt_payoff":
         return planner_tools.debt_payoff(user_id, validated)
