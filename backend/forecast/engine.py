@@ -14,17 +14,13 @@ from contracts.schemas import Forecast, ForecastPoint, RiskEvent
 from .baseline import weekday_baseline
 from .inputs import Inputs, load_inputs
 from .money import pence, pounds
-from .recurring import amount_std, occurrences, patterns
+from .recurring import occurrences, patterns, payment_std
 from .reservations import bill_schedule, protected_on
 
 
 def validate_horizon(horizon: int) -> None:
     if isinstance(horizon, bool) or not isinstance(horizon, int) or not 7 <= horizon <= 365:
         raise ValueError('horizon_days must be an integer between 7 and 365')
-
-
-def protected_total(pots, on_date: dt.date) -> int:
-    return sum(pence(p.amount) for p in pots if p.due_date is None or p.due_date >= on_date)
 
 
 def risks_for_daily(points: list[ForecastPoint], protected: dict[dt.date, int]) -> list[RiskEvent]:
@@ -50,7 +46,7 @@ def project(data: Inputs, horizon_days: int, *, one_off: dict[dt.date, int] | No
     for item, observations in patterns(data.transactions):
         for day in occurrences(item, data.as_of + dt.timedelta(days=1), end):
             flows[day] += pence(item.amount)
-            variances[day] += (amount_std(observations) * 100) ** 2
+            variances[day] += (payment_std(item, observations) * 100) ** 2
     baseline = weekday_baseline(data.transactions, data.as_of)
     one_off = one_off or {}
     balance, variance = data.balance - one_off.get(data.as_of, 0), 0.0
@@ -72,7 +68,7 @@ def response(data: Inputs, daily: list[ForecastPoint], horizon_days: int) -> For
         f'Opening balance £{pounds(data.balance):.2f} is the repository balance at close of {data.as_of}.',
         'Recurrences use up to 180 days; everyday spending uses the preceding 84 days; days without recorded spending count as zero. Sparse history may understate spending.',
         'Recurring observations and positive transactions are excluded from everyday spending; refunds do not predict future income.',
-        'Monthly schedules preserve calendar dates; variable income uses its historical mean and observed variability.',
+        'Monthly schedules preserve calendar dates; irregular income uses its mean observed receipt and cadence, with observed amount variability and income-times-gap-variation timing uncertainty; neither income nor timing is guaranteed.',
         'Low/high bands are expected balance plus/minus one accumulated standard deviation; daily and payment variances are independent.',
         'Pots reserve existing money through their due date. A dated pot funds a bill only with the exact same merchant name and payment date; that allocation is consumed when paid.',
     ]

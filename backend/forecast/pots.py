@@ -9,7 +9,7 @@ import datetime as dt
 from contracts.schemas import BreakdownItem, SafeToSpend
 from .inputs import Inputs, load_inputs
 from .money import pence, pounds
-from .recurring import amount_std, occurrences, patterns
+from .recurring import occurrences, patterns, payment_std
 from .reservations import allocations, bill_schedule
 
 
@@ -17,7 +17,7 @@ def safe_from_inputs(data: Inputs) -> SafeToSpend:
     detected = patterns(data.transactions)
     start = data.as_of + dt.timedelta(days=1)
     fallback = data.as_of + dt.timedelta(days=90)
-    incomes = [day for item, observations in detected if item.amount > 0 and amount_std(observations) == 0
+    incomes = [day for item, observations in detected if item.amount > 0 and payment_std(item, observations) == 0
                for day in occurrences(item, start, fallback)]
     cutoff = min(incomes, default=fallback)
     pots = [p for p in data.pots if p.due_date is None or p.due_date >= data.as_of]
