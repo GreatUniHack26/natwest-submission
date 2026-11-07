@@ -88,3 +88,14 @@ def test_real_sqlite_forecast_integration_discloses_generated_demo_gap(monkeypat
     client = TestClient(app)
     response = client.get('/users/sam/safe-to-spend')
     assert response.status_code == 200 and response.json()['safe_amount'] == -2555.94
+
+
+def test_balance_source_is_independent_of_user_category_overrides():
+    repository.save_persona(user(),[transaction('opening','2026-01-01',100,'Opening balance'),transaction('spend','2026-01-02',-10)],[])
+    repository.set_override('u1','opening','other','want')
+    assert repository.get_balance('u1',config.TODAY) == 90
+
+
+def test_nonfinite_ledger_amount_cannot_become_a_balance():
+    repository.save_persona(user(),[transaction('opening','2026-01-01',100,'Opening balance'),transaction('invalid','2026-01-02',float('inf'))],[])
+    with pytest.raises(ValueError,match='finite'): repository.get_balance('u1',config.TODAY)
