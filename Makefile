@@ -1,4 +1,4 @@
-.PHONY: install api web test types
+.PHONY: install api web test types seed
 
 install:
 	pip install -r requirements.txt --break-system-packages || pip install -r requirements.txt
@@ -12,6 +12,10 @@ web:
 
 test:
 	pytest -q
+
+# generate all personas into the SQLite DB (idempotent; use with MOCK_DATA=0)
+seed:
+	python3 -m backend.data.seed
 
 # regenerate frontend types from the running API (run `make api` first)
 types:
