@@ -16,7 +16,7 @@ from .inputs import ForecastDataUnavailable, load_inputs
 from .money import pence, pounds
 from .pots import bill_reservations
 from .recurring import patterns
-from .reservations import allocations, bill_schedule, protected_on, unfunded_bills
+from .reservations import allocations, bill_schedule, protected_on, unfunded_bills, remaining_pots
 
 
 def household_inputs(household_id: str):
@@ -49,7 +49,8 @@ def household_forecast(household_id: str, horizon: int = 90) -> Forecast:
         raise ValueError('Household forecast dates must align')
     combined = [ForecastPoint(date=day, **{field: pounds(sum(pence(getattr(points[index], field)) for points in daily))
                                           for field in ('low','expected','high')}) for index, day in enumerate(dates)]
-    pots = [pot for item in data for pot in item.pots]
+    pots = remaining_pots([pot for item in data for pot in item.pots],
+                          [tx for item in data for tx in item.transactions], data[0].as_of)
     bills = [bill for item in data for bill in bill_schedule([p for p, _ in patterns(item.transactions)], item.as_of + dt.timedelta(days=1), dates[-1])]
     protected = {day: protected_on(pots, bills, day) for day in dates}
     assumptions = [
@@ -66,7 +67,11 @@ def household_forecast(household_id: str, horizon: int = 90) -> Forecast:
 def household_safe_to_spend(household_id: str) -> SafeToSpend:
     data = household_inputs(household_id)
     prepared = [(item, bill_reservations(item)) for item in data]
-    pots = [pot for _, (member_pots, _, _) in prepared for pot in member_pots]
+    # Reconcile actual shared payments globally; member-local consumed copies
+    # from bill_reservations must not consume a partial payment twice.
+    pots = [pot for pot in remaining_pots([p for item in data for p in item.pots],
+                                        [tx for item in data for tx in item.transactions], data[0].as_of)
+            if pot.due_date is None or pot.due_date >= data[0].as_of]
     records = sorted([(*bill, item.user_id) for item, (_, bills, _) in prepared for bill in bills])
     bills = [record[:3] for record in records]
     credits, _ = allocations(pots, bills)

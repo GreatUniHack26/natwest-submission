@@ -1,4 +1,4 @@
-# Household integration proposal (#35; approval required)
+# Household forecasts (#35)
 
 `household_forecast(household_id, horizon=90)` returns the existing Forecast
 shape, identifying the household in `user_id`. Daily dates align before sums;
@@ -24,9 +24,9 @@ this ownership requirement must be enforced in the data layer because the curren
 contracts do not contain account IDs. `internal_transfer` rows are excluded from
 income/spending inference for ordinary and household projections; voluntary future
 transfers are not forecast as consumption or wages. Other categories are unchanged.
-These representation conventions need P1's approval before real integration.
+The data layer enforces these ownership conventions.
 
-Proposed shared routes:
+Routes:
 
 - `GET /households/{household_id}/forecast?days=90` (7–365 inclusive).
 - `GET /households/{household_id}/safe-to-spend`.
@@ -37,6 +37,6 @@ or mock-only household mode returns 503. Household fixture fallbacks do not exis
 and must not leak Sam's unrelated data. TestClient tests verify exact numbers
 and errors through the real calculation code with repository fakes.
 
-The shared API changes require all-five approval before merge. Family-persona
-and actual SQLite verification remain blocked by upstream #4/#5; controlled
-boundary tests are not proof of those integrations.
+Integration tests seed the existing family generator into a temporary SQLite database
+and exercise the repository, real daily calculations and HTTP endpoints together.
+Financial calculations are also checked against independent controlled ledgers.

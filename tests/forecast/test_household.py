@@ -169,3 +169,35 @@ def test_misaligned_projection_dates_fail_before_aggregation(family,monkeypatch)
     monkeypatch.setattr(household,'project',misaligned)
     with pytest.raises(ValueError,match='dates must align'):
         forecast.household_forecast('h1',10)
+
+
+def test_shared_pot_consumes_bill_already_paid_today_by_another_member(family):
+    family['balances'] = {'adult1': 20, 'adult2': 0}  # closing balances after payment
+    family['pots']['adult1'] = [Pot(id='rent',user_id='adult1',name='Rent',amount=180,due_date=config.TODAY)]
+    rows = txs(['2026-08-07','2026-09-07','2026-10-07','2026-11-07'],[-180]*4)
+    rows += txs(['2026-08-09','2026-09-09','2026-10-09'],[100]*3,merchant='Pay')
+    family['transactions']['adult2'] = [t.model_copy(update={'user_id':'adult2'}) for t in rows]
+    before = deepcopy(family)
+    safe = forecast.household_safe_to_spend('h1')
+    assert (safe.balance,safe.pots_total,safe.upcoming_bills,safe.safe_amount) == (20,0,0,20)
+    assert sum(line.amount for line in safe.breakdown) == 20
+    result = forecast.household_forecast('h1',7)
+    assert result.points[0].expected == 20 and result.points[-1].expected == 120
+    assert result.risk_events == []
+    assert family == before
+    # Without today's actual debit, the due-today obligation remains reserved.
+    family['transactions']['adult2'] = [t for t in family['transactions']['adult2'] if t.date != config.TODAY]
+    assert forecast.household_safe_to_spend('h1').pots_total == 180
+
+
+def test_same_member_partial_payment_is_not_consumed_twice_in_household(family):
+    family['balances'] = {'adult1': 100, 'adult2': 0}
+    family['pots']['adult1'] = [Pot(id='rent',user_id='adult1',name='Rent',amount=180,due_date=config.TODAY)]
+    rows = txs(['2026-08-07','2026-09-07','2026-10-07'],[-180]*3)
+    rows += txs(['2026-11-07'],[-100],merchant='Rent paid today')
+    rows[-1].merchant = 'Rent'
+    rows += txs(['2026-08-09','2026-09-09','2026-10-09'],[100]*3,merchant='Pay')
+    family['transactions']['adult1'] = [t.model_copy(update={'user_id':'adult1'}) for t in rows]
+    safe = forecast.household_safe_to_spend('h1')
+    assert (safe.pots_total,safe.upcoming_bills,safe.safe_amount) == (80,0,20)
+    assert sum(line.amount for line in safe.breakdown) == 20

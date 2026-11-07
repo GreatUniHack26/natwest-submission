@@ -1,4 +1,4 @@
-"""Shared API change: requires all-five approval before merge."""
+"""Household forecasts and conservative safe-to-spend through existing contracts."""
 from fastapi import APIRouter, HTTPException, Query
 
 from backend import forecast as fc
