@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&amp;family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&amp;display=swap">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+html,body{margin:0;height:100%;background:#F5F5F7}
+*{box-sizing:border-box}
+body{font-family:'Nunito Sans',system-ui,sans-serif;color:#1F1F1F;-webkit-font-smoothing:antialiased}
+button,input{font-family:inherit}
+:focus-visible{outline:3px solid #7B3FA0;outline-offset:2px}
+a{color:#5A287D}
+a:hover{color:#7B3FA0}
+input[type=range]{accent-color:#5A287D}
+</style>
+</helmet>
+<div style="position:relative;height:{{ rootH }};width:100%;display:flex;flex-direction:column;background:#F5F5F7;container-type:inline-size;overflow:hidden;font-family:'Nunito Sans',system-ui,sans-serif;color:#1F1F1F">
+
+<header style="flex:none;background:#5A287D;color:#FFFFFF;display:flex;align-items:center;gap:16px;padding:0 clamp(12px,2.2cqi,32px);min-height:64px">
+  <button onClick="{{ goLanding }}" aria-label="FinTime home" style="background:none;border:none;color:#FFFFFF;padding:6px 0;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:44px;justify-content:center">
+    <span style="font:800 22px/1 Montserrat,sans-serif;letter-spacing:-0.02em">FinTime</span>
+    <span style="font:600 11px/1.2 'Nunito Sans',sans-serif;color:#F1EAF7;letter-spacing:0.02em">in partnership with NatWest</span>
+  </button>
+  <sc-if value="{{ showNav }}" hint-placeholder-val="{{ true }}">
+    <nav aria-label="Main" style="display:flex;gap:4px;margin-left:16px;flex:none">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+        <button onClick="{{ n.onClick }}" aria-current="{{ n.current }}" style="background:{{ n.bg }};color:#FFFFFF;border:none;border-radius:999px;min-height:44px;padding:0 16px;font:700 15px 'Nunito Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;flex:none" style-hover="background:#7B3FA0"><i class="ph ph-{{ n.icon }}" style="font-size:18px"></i>{{ n.label }}</button>
+      </sc-for>
+    </nav>
+  </sc-if>
+  <div style="flex:1"></div>
+  <sc-if value="{{ showCoachBtn }}">
+    <button onClick="{{ toggleChat }}" aria-pressed="{{ chatOpen }}" style="background:{{ coachBtnBg }};color:{{ coachBtnFg }};border:1.5px solid #FFFFFF;border-radius:999px;min-height:44px;padding:0 18px;font:700 15px 'Nunito Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;flex:none"><i class="ph ph-chat-circle-text" style="font-size:18px"></i>Coach</button>
+  </sc-if>
+  <sc-if value="{{ notLanding }}" hint-placeholder-val="{{ true }}">
+    <button onClick="{{ toggleMenu }}" aria-haspopup="menu" aria-expanded="{{ menuOpen }}" style="background:#3C1053;color:#FFFFFF;border:1px solid #7B3FA0;border-radius:999px;min-height:44px;padding:4px 14px 4px 4px;cursor:pointer;display:flex;align-items:center;gap:10px;white-space:nowrap;flex:none" style-hover="background:#7B3FA0">
+      <span style="width:36px;height:36px;border-radius:999px;background:{{ avBg }};color:{{ avFg }};display:grid;place-items:center;font:800 13px Montserrat,sans-serif;border:2px solid #FFFFFF">{{ pInitials }}</span>
+      <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.15">
+        <span style="font:600 11px 'Nunito Sans',sans-serif;color:#F1EAF7">Viewing as</span>
+        <span style="font:700 14px 'Nunito Sans',sans-serif">{{ pName }}</span>
+      </span>
+      <i class="ph ph-caret-down" style="font-size:16px"></i>
+    </button>
+  </sc-if>
+</header>
+
+<sc-if value="{{ error }}">
+  <div role="alert" style="flex:none;background:#FFFFFF;border-bottom:1px solid #E3DAEB;padding:10px clamp(12px,2.2cqi,32px);display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+    <span style="display:inline-flex;align-items:center;gap:6px;background:#C8102E;color:#FFFFFF;border-radius:999px;padding:4px 12px;font:700 13px 'Nunito Sans',sans-serif"><i class="ph ph-wifi-slash"></i>Connection problem</span>
+    <span style="font-size:15px;color:#1F1F1F;flex:1 1 260px">We couldn't reach your bank. These figures are from 09:40 this morning and may be out of date.</span>
+    <button onClick="{{ retry }}" style="background:#FFFFFF;color:#5A287D;border:1.5px solid #5A287D;border-radius:999px;min-height:44px;padding:0 18px;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="background:#F1EAF7"><i class="ph ph-arrows-clockwise"></i>Try again</button>
+  </div>
+</sc-if>
+
+<div style="flex:1;min-height:0;display:flex">
+<sc-if value="{{ showMain }}" hint-placeholder-val="{{ true }}">
+<main ref="{{ mainRef }}" style="flex:1;min-width:0;overflow:auto">
+
+<sc-if value="{{ sLanding }}" hint-placeholder-val="{{ true }}">
+  <section style="background:#3C1053;color:#FFFFFF;padding:clamp(32px,5cqi,72px) clamp(16px,3cqi,48px) clamp(120px,10cqi,150px)">
+    <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:20px;align-items:flex-start">
+      <span style="display:inline-flex;align-items:center;gap:8px;background:#5A287D;color:#F1EAF7;border-radius:999px;padding:6px 14px;font:700 13px 'Nunito Sans',sans-serif"><i class="ph ph-clock-counter-clockwise"></i>Your financial time-travel coach</span>
+      <h1 style="margin:0;font:800 clamp(34px,5.4cqi,64px)/1.08 Montserrat,sans-serif;letter-spacing:-0.02em;max-width:900px;text-wrap:balance">Your money, your story. FinTime fits itself to you.</h1>
+      <p style="margin:0;font-size:clamp(17px,1.5cqi,20px);line-height:1.6;color:#F1EAF7;max-width:640px;text-wrap:pretty">See your balance before it happens, test a purchase before you make it, and talk it through with a coach. Built for tight and irregular budgets.</p>
+    </div>
+  </section>
+  <div style="max-width:1248px;margin:clamp(-130px,-8cqi,-100px) auto 0;padding:0 clamp(12px,2cqi,24px) 56px;display:flex;flex-direction:column;gap:32px">
+    <div style="background:#FFFFFF;border-radius:12px;box-shadow:0 2px 4px rgba(60,16,83,0.08),0 12px 32px rgba(60,16,83,0.10);padding:clamp(20px,2.4cqi,32px);display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-wrap:wrap;gap:16px 32px;align-items:flex-end;justify-content:space-between">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <h2 style="margin:0;font:800 clamp(24px,2.4cqi,30px)/1.2 Montserrat,sans-serif;color:#3C1053">Pick your money persona</h2>
+          <p style="margin:0;font-size:16px;line-height:1.5;color:#5E5E5E">Every number, alert, tip and coach answer is tuned to who you are. You can switch at any time from the top bar.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:700 13px 'Nunito Sans',sans-serif;color:#5E5E5E">How FinTime talks to you</span>
+          <div role="radiogroup" aria-label="How FinTime talks to you" style="display:flex;background:#F1EAF7;border-radius:999px;padding:4px;gap:2px">
+            <sc-for list="{{ toneSeg }}" as="o" hint-placeholder-count="3">
+              <button role="radio" aria-checked="{{ o.on }}" onClick="{{ o.onClick }}" style="background:{{ o.bg }};color:{{ o.fg }};border:none;border-radius:999px;min-height:40px;padding:0 18px;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px"><i class="ph ph-{{ o.icon }}"></i>{{ o.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px">
+        <sc-for list="{{ personaCards }}" as="c" hint-placeholder-count="3">
+          <div onClick="{{ c.onPick }}" style="position:relative;border:{{ c.border }};background:{{ c.bg }};border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;cursor:pointer">
+            <div style="display:flex;align-items:center;gap:14px">
+              <span style="width:56px;height:56px;flex:none;border-radius:999px;background:{{ c.avBg }};color:{{ c.avFg }};display:grid;place-items:center;font:800 17px Montserrat,sans-serif;border:2px solid #E3DAEB">{{ c.initials }}</span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font:800 20px/1.2 Montserrat,sans-serif;color:#1F1F1F">{{ c.name }}</span>
+                <span style="font-size:14px;line-height:1.4;color:#5E5E5E">{{ c.desc }}</span>
+              </div>
+            </div>
+            <sc-if value="{{ c.selected }}">
+              <span style="position:absolute;top:12px;right:12px;display:inline-flex;align-items:center;gap:4px;background:#5A287D;color:#FFFFFF;border-radius:999px;padding:3px 10px;font:700 12px 'Nunito Sans',sans-serif"><i class="ph ph-check"></i>Selected</span>
+            </sc-if>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ c.traits }}" as="t" hint-placeholder-count="3">
+                <span style="background:#F1EAF7;color:#3C1053;border-radius:999px;padding:4px 12px;font:700 13px 'Nunito Sans',sans-serif">{{ t }}</span>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid #E3DAEB;padding-top:12px;display:flex;flex-direction:column;gap:4px">
+              <span style="font:700 12px 'Nunito Sans',sans-serif;color:#5E5E5E;letter-spacing:0.04em;text-transform:uppercase">What FinTime does for you</span>
+              <span style="font:700 16px/1.4 'Nunito Sans',sans-serif;color:#3C1053">{{ c.does }}</span>
+            </div>
+            <button onClick="{{ c.onTry }}" style="margin-top:auto;background:#5A287D;color:#FFFFFF;border:none;border-radius:999px;min-height:48px;padding:0 24px;font:700 16px 'Nunito Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#7B3FA0">Try as {{ c.short }}<i class="ph ph-arrow-right"></i></button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">
+      <div style="background:#FFFFFF;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 2px rgba(60,16,83,0.06)">
+        <span style="width:44px;height:44px;border-radius:999px;background:#F1EAF7;color:#5A287D;display:grid;place-items:center;font-size:22px"><i class="ph ph-chart-line"></i></span>
+        <h3 style="margin:0;font:700 17px Montserrat,sans-serif">Time machine</h3>
+        <p style="margin:0;font-size:15px;line-height:1.55;color:#5E5E5E">Travel to any date in the next 90 days and see your likely balance, with a range when pay is uncertain.</p>
+      </div>
+      <div style="background:#FFFFFF;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 2px rgba(60,16,83,0.06)">
+        <span style="width:44px;height:44px;border-radius:999px;background:#F1EAF7;color:#5A287D;display:grid;place-items:center;font-size:22px"><i class="ph ph-scales"></i></span>
+        <h3 style="margin:0;font:700 17px Montserrat,sans-serif">Can I afford it?</h3>
+        <p style="margin:0;font-size:15px;line-height:1.55;color:#5E5E5E">Test a purchase before you make it. Waiting or not buying are always shown as good choices too.</p>
+      </div>
+      <div style="background:#FFFFFF;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 2px rgba(60,16,83,0.06)">
+        <span style="width:44px;height:44px;border-radius:999px;background:#F1EAF7;color:#5A287D;display:grid;place-items:center;font-size:22px"><i class="ph ph-chat-circle-text"></i></span>
+        <h3 style="margin:0;font:700 17px Montserrat,sans-serif">A coach that knows you</h3>
+        <p style="margin:0;font-size:15px;line-height:1.55;color:#5E5E5E">Ask in your own words. Every answer shows the numbers it used, and you can listen instead of read.</p>
+      </div>
+      <div style="background:#FFFFFF;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 2px rgba(60,16,83,0.06)">
+        <span style="width:44px;height:44px;border-radius:999px;background:#F1EAF7;color:#5A287D;display:grid;place-items:center;font-size:22px"><i class="ph ph-shield-check"></i></span>
+        <h3 style="margin:0;font:700 17px Montserrat,sans-serif">Shows its working</h3>
+        <p style="margin:0;font-size:15px;line-height:1.55;color:#5E5E5E">Every figure explains how it was worked out. When data is missing, we say so instead of guessing.</p>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ sDash }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1240px;margin:0 auto;padding:clamp(16px,2cqi,28px) clamp(12px,2cqi,28px) 48px;display:flex;flex-direction:column;gap:20px">
+    <div style="background:#F1EAF7;border:1px solid #E3DAEB;border-radius:12px;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px">
+      <span style="width:32px;height:32px;flex:none;border-radius:999px;background:{{ avBg }};color:{{ avFg }};display:grid;place-items:center;font:800 11px Montserrat,sans-serif;border:2px solid #FFFFFF">{{ pInitials }}</span>
+      <span style="flex:1 1 280px;font-size:15px;line-height:1.5;color:#1F1F1F"><strong style="color:#3C1053">{{ bannerLead }}</strong> {{ bannerText }}</span>
+      <button onClick="{{ openWhy }}" style="background:none;border:none;padding:0 4px;min-height:44px;font:700 15px 'Nunito Sans',sans-serif;color:#5A287D;text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap"><i class="ph ph-sparkle"></i>Why this fits me</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px">
+      <h1 style="margin:0;font:800 clamp(24px,2.4cqi,32px)/1.2 Montserrat,sans-serif;color:#1F1F1F">{{ greeting }}</h1>
+      <span style="font-size:15px;color:#5E5E5E">Saturday 7 November 2026</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">
+      <section aria-labelledby="sts" style="flex:5 1 420px;min-width:0;background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06),0 4px 12px rgba(60,16,83,0.05);padding:clamp(18px,2cqi,28px);display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <h2 id="sts" style="margin:0;font:700 17px Montserrat,sans-serif;color:#1F1F1F">Safe to spend</h2>
+          <span style="background:#F1EAF7;color:#5A287D;border-radius:999px;padding:2px 10px;font:700 12px 'Nunito Sans',sans-serif">Next 30 days</span>
+        </div>
+        <sc-if value="{{ loading }}">
+          <div aria-busy="true" style="display:flex;flex-direction:column;gap:12px">
+            <div style="width:220px;max-width:70%;height:72px;border-radius:12px;background:#F1EAF7"></div>
+            <div style="height:16px;border-radius:999px;background:#F5F5F7"></div>
+            <span style="display:inline-flex;align-items:center;gap:8px;font-size:15px;color:#5E5E5E"><i class="ph ph-spinner-gap"></i>Getting your latest balance from NatWest…</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ notLoading }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font:800 clamp(60px,7.5cqi,96px)/1 Montserrat,sans-serif;color:#3C1053;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">{{ safeFmt }}</span>
+            <span style="font-size:15px;line-height:1.5;color:#5E5E5E">Left after your pots and the bills due before {{ safeUntil }}.</span>
+          </div>
+          <div aria-hidden="true" style="display:flex;height:14px;border-radius:999px;overflow:hidden;background:#F5F5F7;gap:2px">
+            <div style="width:{{ barSafe }};background:#007A4D"></div>
+            <div style="width:{{ barBills }};background:#3C1053"></div>
+            <div style="width:{{ barPots }};background:#E3DAEB"></div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+            <sc-for list="{{ eq }}" as="e" hint-placeholder-count="4">
+              <sc-if value="{{ e.hasOp }}"><span aria-hidden="true" style="font:700 18px Montserrat,sans-serif;color:#5E5E5E;padding:0 2px">{{ e.op }}</span></sc-if>
+              <button onClick="{{ e.onClick }}" aria-expanded="{{ e.on }}" style="background:{{ e.bg }};border:1.5px solid {{ e.bd }};border-radius:12px;min-height:56px;padding:6px 12px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left" style-hover="border-color:#7B3FA0">
+                <span style="display:flex;align-items:center;gap:6px;font:700 12px 'Nunito Sans',sans-serif;color:#5E5E5E"><span style="width:10px;height:10px;border-radius:3px;background:{{ e.sw }};border:1px solid #E3DAEB"></span>{{ e.label }}</span>
+                <span style="font:700 17px Montserrat,sans-serif;color:#1F1F1F;font-variant-numeric:tabular-nums">{{ e.amt }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ bkOpen }}">
+            <div style="border:1px solid #E3DAEB;border-radius:12px;padding:4px 16px">
+              <sc-for list="{{ bkRows }}" as="r" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #E3DAEB">
+                  <span style="display:flex;flex-direction:column"><span style="font:600 15px 'Nunito Sans',sans-serif">{{ r.l }}</span><span style="font-size:13px;color:#5E5E5E">{{ r.sub }}</span></span>
+                  <span style="font:700 15px Montserrat,sans-serif;font-variant-numeric:tabular-nums">{{ r.r }}</span>
+                </div>
+              </sc-for>
+              <p style="margin:0;padding:10px 0;font-size:14px;color:#5E5E5E">{{ bkNote }}</p>
+            </div>
+          </sc-if>
+          <button onClick="{{ calcSafe }}" style="align-self:flex-start;background:none;border:none;padding:0;min-height:44px;font:700 14px 'Nunito Sans',sans-serif;color:#5A287D;text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ph ph-question"></i>How was this calculated?</button>
+        </sc-if>
+      </section>
+
+      <section aria-labelledby="alh" style="flex:4 1 340px;min-width:0;background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06),0 4px 12px rgba(60,16,83,0.05);padding:clamp(18px,2cqi,24px);display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <h2 id="alh" style="margin:0;font:700 17px Montserrat,sans-serif">Alerts</h2>
+          <span style="background:#5A287D;color:#FFFFFF;border-radius:999px;padding:1px 9px;font:700 12px 'Nunito Sans',sans-serif">{{ alertCount }}</span>
+        </div>
+        <sc-if value="{{ loading }}">
+          <div style="display:flex;flex-direction:column;gap:10px;padding-top:8px"><div style="height:64px;border-radius:12px;background:#F5F5F7"></div><div style="height:64px;border-radius:12px;background:#F5F5F7"></div><div style="height:64px;border-radius:12px;background:#F5F5F7"></div></div>
+        </sc-if>
+        <sc-if value="{{ notLoading }}" hint-placeholder-val="{{ true }}">
+          <sc-for list="{{ alerts }}" as="a" hint-placeholder-count="3">
+            <article style="display:flex;flex-direction:column;gap:6px;padding:14px 0;border-top:1px solid #E3DAEB">
+              <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                <span style="display:inline-flex;align-items:center;gap:4px;background:{{ a.bg }};color:{{ a.fg }};border-radius:999px;padding:3px 10px;font:700 12px 'Nunito Sans',sans-serif"><i class="ph ph-{{ a.icon }}"></i>{{ a.sevLabel }}</span>
+                <span style="font:700 13px 'Nunito Sans',sans-serif;color:#5E5E5E">{{ a.type }}</span>
+              </div>
+              <span style="font:700 16px/1.4 'Nunito Sans',sans-serif;color:#1F1F1F">{{ a.title }}</span>
+              <span style="font-size:14px;line-height:1.5;color:#5E5E5E">{{ a.msg }}</span>
+              <button onClick="{{ a.onClick }}" style="align-self:flex-start;margin-top:4px;background:#FFFFFF;color:#5A287D;border:1.5px solid #5A287D;border-radius:999px;min-height:44px;padding:0 16px;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="background:#F1EAF7">{{ a.action }}<i class="ph ph-arrow-right"></i></button>
+            </article>
+          </sc-for>
+        </sc-if>
+      </section>
+    </div>
+
+    <section aria-labelledby="tmh" style="background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06),0 4px 12px rgba(60,16,83,0.05);padding:clamp(18px,2cqi,28px);display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <h2 id="tmh" style="margin:0;font:700 17px Montserrat,sans-serif;display:flex;align-items:center;gap:8px"><i class="ph ph-clock-counter-clockwise" style="color:#5A287D"></i>Your time machine</h2>
+          <span style="font-size:14px;color:#5E5E5E">Projected balance for the next {{ horizon }} days</span>
+        </div>
+        <div role="radiogroup" aria-label="Forecast length" style="display:flex;background:#F1EAF7;border-radius:999px;padding:4px;gap:2px">
+          <sc-for list="{{ horizonSeg }}" as="o" hint-placeholder-count="3">
+            <button role="radio" aria-checked="{{ o.on }}" onClick="{{ o.onClick }}" style="background:{{ o.bg }};color:{{ o.fg }};border:none;border-radius:999px;min-height:40px;padding:0 16px;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer">{{ o.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ loading }}">
+        <div style="height:280px;border-radius:12px;background:#F5F5F7;display:grid;place-items:center;color:#5E5E5E;font-size:15px">Building your forecast…</div>
+      </sc-if>
+      <sc-if value="{{ notLoading }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;background:#F5F5F7;border-radius:12px;padding:14px 16px">
+          <div style="flex:1 1 260px;display:flex;flex-direction:column;gap:2px">
+            <label for="scrub" style="font:700 13px 'Nunito Sans',sans-serif;color:#5A287D;display:flex;align-items:center;gap:6px"><i class="ph ph-calendar-blank"></i>Travel to a date</label>
+            <input id="scrub" type="range" min="0" max="{{ horizon }}" value="{{ scrub }}" onChange="{{ onScrub }}" aria-valuetext="{{ readDate }}" style="width:100%;height:44px;margin:0;cursor:pointer">
+          </div>
+          <div style="flex:2 1 320px;display:flex;flex-direction:column;gap:2px">
+            <span style="font:700 14px 'Nunito Sans',sans-serif;color:#5E5E5E">{{ readDate }}</span>
+            <sc-if value="{{ readMissing }}">
+              <span style="font-size:15px;line-height:1.5;color:#1F1F1F;display:flex;gap:8px;align-items:flex-start"><i class="ph ph-question" style="color:#5A287D;font-size:20px;margin-top:1px"></i>We don't have enough data to forecast this far. We won't show a guessed number.</span>
+            </sc-if>
+            <sc-if value="{{ readOk }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px">
+                <span style="font:800 32px/1.1 Montserrat,sans-serif;color:#3C1053;font-variant-numeric:tabular-nums">{{ readLikely }}</span>
+                <span style="font-size:15px;color:#5E5E5E">likely · range {{ readRange }}</span>
+                <span style="display:inline-flex;align-items:center;gap:4px;background:{{ rsBg }};color:{{ rsFg }};border-radius:999px;padding:3px 10px;font:700 12px 'Nunito Sans',sans-serif"><i class="ph ph-{{ rsIcon }}"></i>{{ rsLabel }}</span>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+        <svg viewBox="0 0 {{ cw }} {{ ch }}" width="100%" role="img" aria-label="{{ chartAria }}" style="display:block;overflow:visible;font-family:'Nunito Sans',sans-serif">
+          <sc-for list="{{ yTicks }}" as="t" hint-placeholder-count="4">
+            <line x1="{{ t.x1 }}" x2="{{ t.x2 }}" y1="{{ t.y }}" y2="{{ t.y }}" style="stroke:#E3DAEB;stroke-width:1px"></line>
+            <text x="{{ t.lx }}" y="{{ t.ty }}" style="font-size:12px;fill:#5E5E5E;text-anchor:end">{{ t.label }}</text>
+          </sc-for>
+          <path d="{{ bandPath }}" style="fill:#5A287D;fill-opacity:0.14;stroke:none"></path>
+          <sc-if value="{{ hasZero }}">
+            <line x1="{{ zx1 }}" x2="{{ zx2 }}" y1="{{ zy }}" y2="{{ zy }}" style="stroke:#C8102E;stroke-width:1.5px;stroke-dasharray:6 4"></line>
+          </sc-if>
+          <path d="{{ linePath }}" style="fill:none;stroke:#5A287D;stroke-width:2.5px;stroke-linejoin:round"></path>
+          <sc-if value="{{ missing }}">
+            <rect x="{{ mx }}" y="{{ my }}" width="{{ mw }}" height="{{ mh }}" rx="8" style="fill:#F5F5F7;stroke:#E3DAEB;stroke-dasharray:4 4"></rect>
+            <text x="{{ mtx }}" y="{{ mty }}" style="font-size:13px;font-weight:700;fill:#5E5E5E;text-anchor:middle">Not enough data past {{ cutLabel }}</text>
+          </sc-if>
+          <sc-for list="{{ xTicks }}" as="t" hint-placeholder-count="4">
+            <text x="{{ t.x }}" y="{{ t.y }}" style="font-size:12px;fill:#5E5E5E;text-anchor:{{ t.anchor }}">{{ t.label }}</text>
+          </sc-for>
+          <line x1="{{ sx }}" x2="{{ sx }}" y1="{{ sTop }}" y2="{{ sBot }}" style="stroke:#3C1053;stroke-width:1.5px"></line>
+          <sc-if value="{{ showSDot }}"><circle cx="{{ sx }}" cy="{{ sy }}" r="7" style="fill:#FFFFFF;stroke:#3C1053;stroke-width:3px"></circle></sc-if>
+          <sc-for list="{{ markers }}" as="m" hint-placeholder-count="2">
+            <circle cx="{{ m.x }}" cy="{{ m.y }}" r="8" style="fill:{{ m.color }};stroke:#FFFFFF;stroke-width:2px"></circle>
+            <text x="{{ m.x }}" y="{{ m.gy }}" style="font-size:11px;font-weight:800;fill:{{ m.glyphFill }};text-anchor:middle">{{ m.glyph }}</text>
+            <text x="{{ m.lx }}" y="{{ m.ly }}" style="font-size:12px;font-weight:700;fill:#1F1F1F;text-anchor:{{ m.anchor }};paint-order:stroke;stroke:#FFFFFF;stroke-width:4px">{{ m.label }}</text>
+          </sc-for>
+        </svg>
+        <div style="display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;font-size:13px;color:#5E5E5E">
+          <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:18px;height:3px;background:#5A287D;border-radius:2px"></span>Expected balance</span>
+          <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:18px;height:12px;background:#E3DAEB;border-radius:3px"></span>Likely range</span>
+          <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:18px;border-top:2px dashed #C8102E"></span>£0</span>
+          <sc-for list="{{ riskList }}" as="r" hint-placeholder-count="2">
+            <span style="display:inline-flex;align-items:center;gap:4px;background:{{ r.bg }};color:{{ r.fg }};border-radius:999px;padding:3px 10px;font:700 12px 'Nunito Sans',sans-serif"><i class="ph ph-{{ r.icon }}"></i>{{ r.sev }} · {{ r.label }}</span>
+          </sc-for>
+        </div>
+        <div style="border-top:1px solid #E3DAEB;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px">
+          <button onClick="{{ toggleAssum }}" aria-expanded="{{ assumOpen }}" style="background:none;border:none;padding:0;min-height:44px;font:700 15px 'Nunito Sans',sans-serif;color:#1F1F1F;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ph ph-{{ assumIcon }}" style="color:#5A287D"></i>Assumptions ({{ assumCount }})</button>
+          <button onClick="{{ calcForecast }}" style="background:none;border:none;padding:0;min-height:44px;font:700 14px 'Nunito Sans',sans-serif;color:#5A287D;text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ph ph-question"></i>How was this calculated?</button>
+        </div>
+        <sc-if value="{{ assumOpen }}">
+          <ul style="margin:0;padding:0 0 0 20px;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.5;color:#1F1F1F">
+            <sc-for list="{{ assumptions }}" as="x" hint-placeholder-count="4"><li>{{ x }}</li></sc-for>
+          </ul>
+        </sc-if>
+      </sc-if>
+    </section>
+
+    <sc-if value="{{ isMaya }}">
+      <section style="background:#3C1053;color:#FFFFFF;border-radius:12px;padding:20px 24px;display:flex;flex-wrap:wrap;align-items:center;gap:16px 32px">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1 1 260px">
+          <span style="font:700 13px 'Nunito Sans',sans-serif;color:#F1EAF7;display:flex;align-items:center;gap:6px"><i class="ph ph-users-three"></i>Household view</span>
+          <span style="font:700 18px/1.4 Montserrat,sans-serif">Maya £95 + Dan £85 = £180 safe to spend together</span>
+        </div>
+        <button onClick="{{ goHousehold }}" style="background:#FFFFFF;color:#3C1053;border:none;border-radius:999px;min-height:44px;padding:0 20px;font:700 15px 'Nunito Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px" style-hover="background:#F1EAF7">Open household view<i class="ph ph-arrow-right"></i></button>
+      </section>
+    </sc-if>
+
+    <section aria-labelledby="poh" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <h2 id="poh" style="margin:0;font:700 17px Montserrat,sans-serif">Pots <span style="font:600 15px 'Nunito Sans',sans-serif;color:#5E5E5E">· {{ potsFmt }} kept aside</span></h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:12px">
+        <sc-for list="{{ pots }}" as="p" hint-placeholder-count="3">
+          <div style="background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06);padding:16px;display:flex;align-items:center;gap:14px">
+            <svg viewBox="0 0 56 56" width="56" height="56" aria-hidden="true" style="flex:none">
+              <circle cx="28" cy="28" r="23" style="fill:none;stroke:#F1EAF7;stroke-width:6px"></circle>
+              <circle cx="28" cy="28" r="23" transform="rotate(-90 28 28)" style="fill:none;stroke:{{ p.ring }};stroke-width:6px;stroke-linecap:round;stroke-dasharray:{{ p.dash }}"></circle>
+              <text x="28" y="32" style="font-size:12px;font-weight:800;fill:#3C1053;text-anchor:middle;font-family:Montserrat,sans-serif">{{ p.pct }}</text>
+            </svg>
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+              <span style="font:700 15px 'Nunito Sans',sans-serif">{{ p.name }}</span>
+              <span style="font:700 17px Montserrat,sans-serif;font-variant-numeric:tabular-nums">{{ p.amt }} <span style="font:600 13px 'Nunito Sans',sans-serif;color:#5E5E5E">{{ p.of }}</span></span>
+              <span style="font-size:13px;color:#5E5E5E;display:flex;align-items:center;gap:4px"><i class="ph ph-{{ p.icon }}"></i>{{ p.due }}</span>
+            </div>
+          </div>
+        </sc-for>
+        <button style="background:transparent;border:1.5px dashed #7B3FA0;border-radius:12px;min-height:88px;color:#5A287D;font:700 15px 'Nunito Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#F1EAF7"><i class="ph ph-plus-circle" style="font-size:22px"></i>Add pot</button>
+      </div>
+    </section>
+  </div>
+</sc-if>
+
+<sc-if value="{{ sAfford }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1240px;margin:0 auto;padding:clamp(16px,2cqi,28px) clamp(12px,2cqi,28px) 48px;display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;flex-direction:column;gap:6px;max-width:720px">
+      <h1 style="margin:0;font:800 clamp(26px,2.6cqi,34px)/1.2 Montserrat,sans-serif">Can I afford it?</h1>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#5E5E5E">Test a purchase before you make it. We'll show what it does to your balance. Buying, waiting and not buying are all fine answers.</p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+      <section aria-label="Purchase details" style="flex:1 1 320px;background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06),0 4px 12px rgba(60,16,83,0.05);padding:24px;display:flex;flex-direction:column;gap:18px">
+        <label style="display:flex;flex-direction:column;gap:6px;font:700 14px 'Nunito Sans',sans-serif">What is it?
+          <input value="{{ afItem }}" onChange="{{ onItem }}" style="min-height:48px;border:1.5px solid #E3DAEB;border-radius:12px;padding:0 14px;font:400 16px 'Nunito Sans',sans-serif;color:#1F1F1F;background:#FFFFFF">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font:700 14px 'Nunito Sans',sans-serif">How much?
+          <span style="display:flex;align-items:center;border:1.5px solid #E3DAEB;border-radius:12px;background:#FFFFFF;padding-left:14px"><span style="font:700 18px Montserrat,sans-serif;color:#5E5E5E">£</span><input type="number" min="0" inputmode="decimal" value="{{ afAmt }}" onChange="{{ onAmt }}" style="flex:1;min-width:0;min-height:48px;border:none;border-radius:12px;padding:0 10px;font:700 20px Montserrat,sans-serif;color:#1F1F1F;background:transparent;font-variant-numeric:tabular-nums"></span>
+        </label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <sc-for list="{{ quickAmts }}" as="q" hint-placeholder-count="4">
+            <button onClick="{{ q.onClick }}" style="background:#F1EAF7;color:#3C1053;border:none;border-radius:999px;min-height:44px;padding:0 16px;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer" style-hover="background:#E3DAEB">{{ q.label }}</button>
+          </sc-for>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:6px;font:700 14px 'Nunito Sans',sans-serif">When would you buy it?
+          <input type="date" value="{{ afDate }}" min="{{ minIso }}" max="{{ maxIso }}" onChange="{{ onDate }}" style="min-height:48px;border:1.5px solid #E3DAEB;border-radius:12px;padding:0 14px;font:400 16px 'Nunito Sans',sans-serif;color:#1F1F1F;background:#FFFFFF">
+        </label>
+        <button onClick="{{ askCoachAfford }}" style="background:#FFFFFF;color:#5A287D;border:1.5px solid #5A287D;border-radius:999px;min-height:48px;padding:0 20px;font:700 15px 'Nunito Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#F1EAF7"><i class="ph ph-chat-circle-text"></i>Talk it through with the coach</button>
+      </section>
+
+      <section aria-live="polite" aria-label="Verdict" style="flex:2 1 460px;min-width:0;background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06),0 4px 12px rgba(60,16,83,0.05);overflow:hidden;display:flex;flex-direction:column">
+        <sc-if value="{{ vUnknown }}">
+          <div style="padding:28px;display:flex;flex-direction:column;gap:10px">
+            <span style="display:inline-flex;align-self:flex-start;align-items:center;gap:6px;background:#F1EAF7;color:#5A287D;border-radius:999px;padding:4px 12px;font:700 13px 'Nunito Sans',sans-serif"><i class="ph ph-question"></i>We can't tell yet</span>
+            <h2 style="margin:0;font:800 24px/1.3 Montserrat,sans-serif">We don't have enough data for {{ afDateLabel }}.</h2>
+            <p style="margin:0;font-size:16px;line-height:1.6;color:#5E5E5E">Your income pattern changed recently, so a forecast that far ahead would be a guess. We won't show a guessed number. Try a date before {{ cutLabel }}.</p>
+          </div>
+        </sc-if>
+        <sc-if value="{{ vKnown }}" hint-placeholder-val="{{ true }}">
+          <div style="background:{{ vHeadBg }};padding:24px 28px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid #E3DAEB">
+            <span style="display:inline-flex;align-self:flex-start;align-items:center;gap:6px;background:{{ vChipBg }};color:{{ vChipFg }};border-radius:999px;padding:5px 14px;font:700 14px 'Nunito Sans',sans-serif"><i class="ph ph-{{ vIcon }}" style="font-size:18px"></i>{{ vLabel }}</span>
+            <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px">
+              <span style="font:800 clamp(44px,5cqi,64px)/1 Montserrat,sans-serif;color:#3C1053;font-variant-numeric:tabular-nums">{{ vAfter }}</span>
+              <span style="font:700 15px 'Nunito Sans',sans-serif;color:#5E5E5E">safe after purchase, at your lowest point ({{ vLowDay }})</span>
+            </div>
+            <p style="margin:0;font-size:16px;line-height:1.6;color:#1F1F1F;max-width:640px">{{ vSentence }}</p>
+          </div>
+          <div style="padding:20px 28px;display:flex;flex-direction:column;gap:16px">
+            <h3 style="margin:0;font:700 15px Montserrat,sans-serif">Your options</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px">
+              <sc-for list="{{ vOptions }}" as="o" hint-placeholder-count="3">
+                <div style="border:1.5px solid #E3DAEB;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px">
+                  <span style="display:flex;align-items:center;gap:8px;font:700 15px 'Nunito Sans',sans-serif;color:#3C1053"><i class="ph ph-{{ o.icon }}" style="font-size:20px"></i>{{ o.title }}</span>
+                  <span style="font:700 20px Montserrat,sans-serif;font-variant-numeric:tabular-nums">{{ o.fig }}</span>
+                  <span style="font-size:14px;line-height:1.5;color:#5E5E5E">{{ o.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="background:#F1EAF7;border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">
+              <i class="ph ph-calendar-check" style="font-size:22px;color:#5A287D;margin-top:2px"></i>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="font:700 14px 'Nunito Sans',sans-serif;color:#3C1053">Better date</span>
+                <span style="font-size:15px;line-height:1.55">{{ vBetter }}</span>
+              </div>
+            </div>
+            <div style="border-top:1px solid #E3DAEB;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px">
+              <button onClick="{{ toggleNums }}" aria-expanded="{{ numsOpen }}" style="background:none;border:none;padding:0;min-height:44px;font:700 15px 'Nunito Sans',sans-serif;color:#1F1F1F;cursor:pointer;display:inline-flex;align-items:center;gap:8px"><i class="ph ph-{{ numsIcon }}" style="color:#5A287D"></i>Numbers used</button>
+              <button onClick="{{ calcAfford }}" style="background:none;border:none;padding:0;min-height:44px;font:700 14px 'Nunito Sans',sans-serif;color:#5A287D;text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ph ph-question"></i>How was this calculated?</button>
+            </div>
+            <sc-if value="{{ numsOpen }}">
+              <table style="width:100%;border-collapse:collapse;font-size:15px">
+                <sc-for list="{{ vNums }}" as="r" hint-placeholder-count="5">
+                  <tr style="border-bottom:1px solid #E3DAEB"><td style="padding:10px 0;color:#5E5E5E">{{ r.l }}</td><td style="padding:10px 0;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">{{ r.r }}</td></tr>
+                </sc-for>
+              </table>
+            </sc-if>
+          </div>
+        </sc-if>
+      </section>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ sActivity }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:960px;margin:0 auto;padding:clamp(16px,2cqi,28px) clamp(12px,2cqi,28px) 48px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h1 style="margin:0;font:800 clamp(26px,2.6cqi,34px)/1.2 Montserrat,sans-serif">Transactions</h1>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#5E5E5E">Tap Need or Want to correct a label. FinTime learns from your changes.</p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
+      <div role="radiogroup" aria-label="Filter" style="display:flex;background:#F1EAF7;border-radius:999px;padding:4px;gap:2px;flex-wrap:wrap">
+        <sc-for list="{{ filterSeg }}" as="o" hint-placeholder-count="4">
+          <button role="radio" aria-checked="{{ o.on }}" onClick="{{ o.onClick }}" style="background:{{ o.bg }};color:{{ o.fg }};border:none;border-radius:999px;min-height:40px;padding:0 16px;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer">{{ o.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:16px;font-size:15px;color:#5E5E5E">
+        <span>Needs <strong style="color:#1F1F1F;font-variant-numeric:tabular-nums">{{ needsFmt }}</strong></span>
+        <span>Wants <strong style="color:#1F1F1F;font-variant-numeric:tabular-nums">{{ wantsFmt }}</strong></span>
+        <span>this week</span>
+      </div>
+    </div>
+    <sc-if value="{{ noTx }}">
+      <div style="background:#FFFFFF;border-radius:12px;padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center">
+        <i class="ph ph-receipt" style="font-size:36px;color:#7B3FA0"></i>
+        <span style="font:700 17px Montserrat,sans-serif">Nothing here yet</span>
+        <span style="font-size:15px;color:#5E5E5E;max-width:360px">No transactions match this filter this week.</span>
+      </div>
+    </sc-if>
+    <sc-for list="{{ txGroups }}" as="g" hint-placeholder-count="3">
+      <section style="display:flex;flex-direction:column;gap:6px">
+        <h2 style="margin:0;font:700 14px 'Nunito Sans',sans-serif;color:#5E5E5E;padding:0 4px">{{ g.date }}</h2>
+        <div style="background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06);padding:0 16px">
+          <sc-for list="{{ g.items }}" as="t" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #E3DAEB;flex-wrap:wrap">
+              <span style="width:40px;height:40px;flex:none;border-radius:999px;background:#F1EAF7;color:#5A287D;display:grid;place-items:center;font-size:19px"><i class="ph ph-{{ t.icon }}"></i></span>
+              <div style="flex:1 1 140px;min-width:0;display:flex;flex-direction:column">
+                <span style="font:700 15px 'Nunito Sans',sans-serif">{{ t.m }}</span>
+                <span style="font-size:13px;color:#5E5E5E">{{ t.sub }}</span>
+              </div>
+              <sc-if value="{{ t.edited }}"><span style="font-size:12px;color:#5E5E5E;display:inline-flex;align-items:center;gap:4px"><i class="ph ph-pencil-simple"></i>Edited</span></sc-if>
+              <sc-if value="{{ t.isIncome }}"><span style="display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:0 12px;min-height:36px;background:#FFFFFF;border:1.5px solid #007A4D;color:#007A4D;font:700 13px 'Nunito Sans',sans-serif"><i class="ph ph-arrow-down-left"></i>Income</span></sc-if>
+              <sc-if value="{{ t.isSpend }}">
+                <button onClick="{{ t.toggle }}" aria-label="{{ t.aria }}" style="display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:0 14px;min-height:44px;min-width:88px;justify-content:center;background:{{ t.chipBg }};border:1.5px solid {{ t.chipBd }};color:{{ t.chipFg }};font:700 13px 'Nunito Sans',sans-serif;cursor:pointer"><i class="ph ph-{{ t.chipIcon }}"></i>{{ t.label }}<i class="ph ph-arrows-down-up" style="font-size:12px;opacity:0.8"></i></button>
+              </sc-if>
+              <span style="min-width:84px;text-align:right;font:700 16px Montserrat,sans-serif;font-variant-numeric:tabular-nums;color:{{ t.amtColor }}">{{ t.amt }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+  </div>
+</sc-if>
+
+<sc-if value="{{ sHousehold }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1240px;margin:0 auto;padding:clamp(16px,2cqi,28px) clamp(12px,2cqi,28px) 48px;display:flex;flex-direction:column;gap:20px">
+    <sc-if value="{{ noHousehold }}">
+      <div style="background:#FFFFFF;border-radius:12px;padding:48px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;box-shadow:0 1px 2px rgba(60,16,83,0.06)">
+        <span style="width:64px;height:64px;border-radius:999px;background:#F1EAF7;color:#5A287D;display:grid;place-items:center;font-size:30px"><i class="ph ph-users-three"></i></span>
+        <h1 style="margin:0;font:800 24px Montserrat,sans-serif">Household view is for shared money</h1>
+        <p style="margin:0;font-size:16px;line-height:1.6;color:#5E5E5E;max-width:460px">{{ pName }} manages money alone, so there's nothing to combine. If you share bills with someone, you can invite them and plan together.</p>
+        <button onClick="{{ tryMaya }}" style="background:#5A287D;color:#FFFFFF;border:none;border-radius:999px;min-height:48px;padding:0 24px;font:700 15px 'Nunito Sans',sans-serif;cursor:pointer;margin-top:6px" style-hover="background:#7B3FA0">See it as Maya &amp; Dan</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isMaya }}">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h1 style="margin:0;font:800 clamp(26px,2.6cqi,34px)/1.2 Montserrat,sans-serif">Household</h1>
+        <p style="margin:0;font-size:16px;line-height:1.6;color:#5E5E5E">Both incomes, both sets of bills, one plan. Each of you can see this view.</p>
+      </div>
+      <section style="background:#3C1053;color:#FFFFFF;border-radius:12px;padding:clamp(20px,2.4cqi,32px);display:flex;flex-wrap:wrap;gap:16px 40px;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font:700 15px 'Nunito Sans',sans-serif;color:#F1EAF7">Safe to spend together · next 30 days</span>
+          <span style="font:800 clamp(56px,7cqi,88px)/1 Montserrat,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-0.03em">£180</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;flex:1 1 260px;font-size:15px;color:#F1EAF7;line-height:1.5">
+          <span>Joint balance £1,120 − pots £150 − bills £790</span>
+          <button onClick="{{ calcHousehold }}" style="align-self:flex-start;background:none;border:none;padding:0;min-height:44px;font:700 14px 'Nunito Sans',sans-serif;color:#FFFFFF;text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ph ph-question"></i>How was this calculated?</button>
+        </div>
+      </section>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px">
+        <sc-for list="{{ members }}" as="m" hint-placeholder-count="2">
+          <section style="background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06),0 4px 12px rgba(60,16,83,0.05);padding:24px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="width:52px;height:52px;border-radius:999px;background:{{ m.avBg }};color:{{ m.avFg }};display:grid;place-items:center;font:800 18px Montserrat,sans-serif;border:2px solid #E3DAEB">{{ m.initials }}</span>
+              <div style="display:flex;flex-direction:column"><span style="font:800 20px Montserrat,sans-serif">{{ m.name }}</span><span style="font-size:14px;color:#5E5E5E">{{ m.work }}</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <span style="font:700 13px 'Nunito Sans',sans-serif;color:#5E5E5E">Personal safe to spend</span>
+              <span style="font:800 40px/1 Montserrat,sans-serif;color:#3C1053;font-variant-numeric:tabular-nums">{{ m.safe }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column">
+              <sc-for list="{{ m.rows }}" as="r" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #E3DAEB;font-size:15px"><span style="color:#5E5E5E">{{ r.l }}</span><span style="font-weight:700;text-align:right">{{ r.r }}</span></div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+      </div>
+      <section style="background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06);padding:20px 24px;display:flex;flex-direction:column;gap:4px">
+        <h2 style="margin:0 0 6px;font:700 17px Montserrat,sans-serif">Shared</h2>
+        <sc-for list="{{ shared }}" as="r" hint-placeholder-count="3">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:12px 0;border-top:1px solid #E3DAEB">
+            <span style="flex:1 1 180px;font:700 15px 'Nunito Sans',sans-serif">{{ r.name }}</span>
+            <span style="font-size:14px;color:#5E5E5E;flex:1 1 120px">{{ r.split }}</span>
+            <span style="font-size:14px;color:#5E5E5E">{{ r.when }}</span>
+            <span style="min-width:96px;text-align:right;font:700 16px Montserrat,sans-serif;font-variant-numeric:tabular-nums">{{ r.amt }}</span>
+          </div>
+        </sc-for>
+      </section>
+    </sc-if>
+  </div>
+</sc-if>
+
+<sc-if value="{{ sTips }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1240px;margin:0 auto;padding:clamp(16px,2cqi,28px) clamp(12px,2cqi,28px) 48px;display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h1 style="margin:0;font:800 clamp(26px,2.6cqi,34px)/1.2 Montserrat,sans-serif">Tips and benchmarks</h1>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#5E5E5E">Picked for {{ group }}. Savings are estimates based on your own spending.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px">
+      <sc-for list="{{ tips }}" as="t" hint-placeholder-count="3">
+        <article style="background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06),0 4px 12px rgba(60,16,83,0.05);padding:20px;display:flex;flex-direction:column;gap:10px">
+          <span style="width:44px;height:44px;border-radius:999px;background:#F1EAF7;color:#5A287D;display:grid;place-items:center;font-size:22px"><i class="ph ph-{{ t.icon }}"></i></span>
+          <h2 style="margin:0;font:700 18px/1.3 Montserrat,sans-serif">{{ t.title }}</h2>
+          <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;background:#FFFFFF;border:1.5px solid #007A4D;color:#007A4D;border-radius:999px;padding:4px 12px;font:700 13px 'Nunito Sans',sans-serif"><i class="ph ph-piggy-bank"></i>{{ t.est }}</span>
+          <p style="margin:0;font-size:15px;line-height:1.6">{{ t.body }}</p>
+          <p style="margin:0;font-size:14px;line-height:1.5;color:#5E5E5E"><strong style="color:#3C1053">Why you're seeing this:</strong> {{ t.why }}</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid #E3DAEB">
+            <button onClick="{{ calcTips }}" style="align-self:flex-start;background:none;border:none;padding:0;min-height:44px;font:700 14px 'Nunito Sans',sans-serif;color:#5A287D;text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ph ph-question"></i>How was this calculated?</button>
+            <span style="font-size:12px;color:#5E5E5E">General information, not financial or tax advice.</span>
+          </div>
+        </article>
+      </sc-for>
+    </div>
+    <section style="background:#FFFFFF;border-radius:12px;box-shadow:0 1px 2px rgba(60,16,83,0.06),0 4px 12px rgba(60,16,83,0.05);padding:clamp(18px,2cqi,28px);display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <h2 style="margin:0;font:700 18px Montserrat,sans-serif">People like you in {{ city }}</h2>
+        <p style="margin:0;font-size:15px;line-height:1.5;color:#5E5E5E">Monthly spending for {{ group }}. This is context, not a target. Everyone's month looks different.</p>
+      </div>
+      <sc-for list="{{ bench }}" as="b" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid #E3DAEB">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px">
+            <span style="font:700 15px 'Nunito Sans',sans-serif">{{ b.label }}</span>
+            <span style="font-size:14px;color:#5E5E5E">You {{ b.you }} · usual range {{ b.range }}</span>
+          </div>
+          <div style="position:relative;height:28px">
+            <div style="position:absolute;left:0;right:0;top:11px;height:6px;border-radius:999px;background:#F5F5F7"></div>
+            <div style="position:absolute;left:{{ b.lo }};width:{{ b.w }};top:8px;height:12px;border-radius:999px;background:#E3DAEB"></div>
+            <div style="position:absolute;left:{{ b.at }};top:2px;width:24px;height:24px;margin-left:-12px;border-radius:999px;background:#5A287D;border:3px solid #FFFFFF;box-shadow:0 1px 3px rgba(60,16,83,0.3)"></div>
+          </div>
+          <span style="font-size:14px;color:#1F1F1F;display:flex;align-items:center;gap:6px"><i class="ph ph-{{ b.icon }}" style="color:#5A287D"></i>{{ b.note }}</span>
+        </div>
+      </sc-for>
+      <button onClick="{{ calcBench }}" style="align-self:flex-start;background:none;border:none;padding:0;min-height:44px;font:700 14px 'Nunito Sans',sans-serif;color:#5A287D;text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ph ph-question"></i>How was this calculated?</button>
+    </section>
+  </div>
+</sc-if>
+
+</main>
+</sc-if>
+
+<sc-if value="{{ chatVisible }}">
+  <aside aria-label="Coach chat" style="width:{{ chatW }};flex:none;border-left:{{ chatBorder }};background:#FFFFFF;display:flex;flex-direction:column;min-height:0">
+    <div style="flex:none;padding:14px 16px;border-bottom:1px solid #E3DAEB;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:40px;height:40px;border-radius:999px;background:#5A287D;color:#FFFFFF;display:grid;place-items:center;font-size:20px;flex:none"><i class="ph ph-chat-circle-text"></i></span>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+          <span style="font:800 17px Montserrat,sans-serif">Coach</span>
+          <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;background:#F1EAF7;color:#3C1053;border-radius:999px;padding:2px 10px 2px 2px;font:700 12px 'Nunito Sans',sans-serif"><span style="width:20px;height:20px;border-radius:999px;background:{{ avBg }};color:{{ avFg }};display:grid;place-items:center;font:800 8px Montserrat,sans-serif">{{ pInitials }}</span>{{ chatBadge }}</span>
+        </div>
+        <sc-if value="{{ desktop }}">
+          <button onClick="{{ closeChat }}" aria-label="Close coach" style="width:44px;height:44px;border-radius:999px;border:none;background:#F5F5F7;color:#1F1F1F;cursor:pointer;font-size:18px;display:grid;place-items:center" style-hover="background:#F1EAF7"><i class="ph ph-x"></i></button>
+        </sc-if>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font:700 12px 'Nunito Sans',sans-serif;color:#5E5E5E">How FinTime talks to you</span>
+        <div role="radiogroup" aria-label="How FinTime talks to you" style="display:flex;background:#F1EAF7;border-radius:999px;padding:3px;gap:2px">
+          <sc-for list="{{ toneSeg }}" as="o" hint-placeholder-count="3">
+            <button role="radio" aria-checked="{{ o.on }}" onClick="{{ o.onClick }}" style="background:{{ o.bg }};color:{{ o.fg }};border:none;border-radius:999px;min-height:36px;padding:0 12px;font:700 13px 'Nunito Sans',sans-serif;cursor:pointer">{{ o.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    <div ref="{{ msgRef }}" style="flex:1;min-height:0;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:14px;background:#F5F5F7">
+      <sc-for list="{{ msgs }}" as="m" hint-placeholder-count="2">
+        <sc-if value="{{ m.isUser }}">
+          <div style="align-self:flex-end;max-width:85%;background:#5A287D;color:#FFFFFF;border-radius:12px 12px 4px 12px;padding:10px 14px;font-size:15px;line-height:1.5">{{ m.text }}</div>
+        </sc-if>
+        <sc-if value="{{ m.isCoach }}">
+          <div style="align-self:flex-start;max-width:92%;display:flex;flex-direction:column;gap:8px">
+            <div style="background:#FFFFFF;border:1px solid #E3DAEB;border-radius:12px 12px 12px 4px;padding:12px 14px;font-size:15px;line-height:1.55;color:#1F1F1F">{{ m.text }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-if value="{{ m.hasNums }}">
+                <button onClick="{{ m.toggleNums }}" aria-expanded="{{ m.numsOpen }}" style="display:inline-flex;align-items:center;gap:6px;background:#F1EAF7;color:#3C1053;border:none;border-radius:999px;min-height:36px;padding:0 12px;font:700 13px 'Nunito Sans',sans-serif;cursor:pointer" style-hover="background:#E3DAEB"><i class="ph ph-calculator"></i>Numbers used<i class="ph ph-{{ m.numsIcon }}"></i></button>
+              </sc-if>
+              <button onClick="{{ m.listen }}" aria-pressed="{{ m.speaking }}" style="display:inline-flex;align-items:center;gap:6px;background:#FFFFFF;color:#5A287D;border:1.5px solid #E3DAEB;border-radius:999px;min-height:36px;padding:0 12px;font:700 13px 'Nunito Sans',sans-serif;cursor:pointer" style-hover="border-color:#5A287D"><i class="ph ph-{{ m.listenIcon }}"></i>{{ m.listenLabel }}</button>
+            </div>
+            <sc-if value="{{ m.numsOpen }}">
+              <div style="background:#FFFFFF;border:1px solid #E3DAEB;border-radius:12px;padding:4px 14px">
+                <sc-for list="{{ m.nums }}" as="r" hint-placeholder-count="3">
+                  <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #E3DAEB;font-size:14px"><span style="color:#5E5E5E">{{ r.l }}</span><span style="font-weight:700;text-align:right;font-variant-numeric:tabular-nums">{{ r.r }}</span></div>
+                </sc-for>
+                <span style="display:block;padding:8px 0;font-size:12px;color:#5E5E5E">General information, not financial advice.</span>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </sc-for>
+      <sc-if value="{{ typing }}">
+        <div style="align-self:flex-start;background:#FFFFFF;border:1px solid #E3DAEB;border-radius:12px;padding:10px 14px;font-size:14px;color:#5E5E5E;display:flex;align-items:center;gap:8px"><i class="ph ph-dots-three"></i>Coach is checking your numbers…</div>
+      </sc-if>
+    </div>
+    <div style="flex:none;padding:12px 16px 16px;border-top:1px solid #E3DAEB;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <sc-for list="{{ prompts }}" as="q" hint-placeholder-count="3">
+          <button onClick="{{ q.onClick }}" style="background:#FFFFFF;color:#5A287D;border:1.5px solid #5A287D;border-radius:999px;min-height:40px;padding:6px 14px;font:700 13px/1.3 'Nunito Sans',sans-serif;cursor:pointer;text-align:left" style-hover="background:#F1EAF7">{{ q.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onKey }}" placeholder="Ask about your money" aria-label="Message the coach" style="flex:1;min-width:0;min-height:48px;border:1.5px solid #E3DAEB;border-radius:999px;padding:0 18px;font:400 15px 'Nunito Sans',sans-serif;color:#1F1F1F">
+        <button onClick="{{ onSend }}" aria-label="Send" style="width:48px;height:48px;flex:none;border-radius:999px;border:none;background:#5A287D;color:#FFFFFF;cursor:pointer;font-size:20px;display:grid;place-items:center" style-hover="background:#7B3FA0"><i class="ph ph-paper-plane-right"></i></button>
+      </div>
+      <span style="font-size:12px;color:#5E5E5E">General information, not financial advice. The coach can make mistakes, so check the numbers used.</span>
+    </div>
+  </aside>
+</sc-if>
+</div>
+
+<sc-if value="{{ showTabs }}">
+  <nav aria-label="Main" style="flex:none;background:#FFFFFF;border-top:1px solid #E3DAEB;display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:6px">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+      <button onClick="{{ t.onClick }}" aria-current="{{ t.current }}" style="background:none;border:none;border-top:3px solid {{ t.bar }};min-height:60px;color:{{ t.fg }};cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:700 11px 'Nunito Sans',sans-serif"><i class="ph ph-{{ t.icon }}" style="font-size:22px"></i>{{ t.label }}</button>
+    </sc-for>
+  </nav>
+</sc-if>
+
+<sc-if value="{{ menuOpen }}">
+  <div onClick="{{ closeMenu }}" style="position:absolute;inset:0;z-index:20"></div>
+  <div role="menu" style="position:absolute;top:60px;right:12px;z-index:21;width:min(340px,calc(100% - 24px));background:#FFFFFF;border-radius:12px;box-shadow:0 4px 8px rgba(60,16,83,0.10),0 16px 40px rgba(60,16,83,0.18);padding:8px;display:flex;flex-direction:column">
+    <span style="padding:8px 10px;font:700 12px 'Nunito Sans',sans-serif;color:#5E5E5E;letter-spacing:0.04em;text-transform:uppercase">Switch persona</span>
+    <sc-for list="{{ menuItems }}" as="o" hint-placeholder-count="3">
+      <button role="menuitemradio" aria-checked="{{ o.on }}" onClick="{{ o.onClick }}" style="background:{{ o.bg }};border:none;border-radius:12px;min-height:56px;padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:12px;text-align:left" style-hover="background:#F1EAF7">
+        <span style="width:40px;height:40px;flex:none;border-radius:999px;background:{{ o.avBg }};color:{{ o.avFg }};display:grid;place-items:center;font:800 13px Montserrat,sans-serif;border:2px solid #E3DAEB">{{ o.initials }}</span>
+        <span style="flex:1;display:flex;flex-direction:column;min-width:0"><span style="font:700 15px 'Nunito Sans',sans-serif;color:#1F1F1F">{{ o.name }}</span><span style="font-size:13px;color:#5E5E5E;line-height:1.35">{{ o.desc }}</span></span>
+        <sc-if value="{{ o.on }}"><i class="ph ph-check-circle" style="font-size:22px;color:#5A287D"></i></sc-if>
+      </button>
+    </sc-for>
+    <button onClick="{{ goLanding }}" style="margin-top:4px;border:none;border-top:1px solid #E3DAEB;background:none;min-height:48px;font:700 14px 'Nunito Sans',sans-serif;color:#5A287D;cursor:pointer;display:flex;align-items:center;gap:8px;padding:0 10px"><i class="ph ph-arrow-left"></i>Back to persona picker</button>
+  </div>
+</sc-if>
+
+<sc-if value="{{ panelOpen }}">
+  <div onClick="{{ closePanel }}" style="position:absolute;inset:0;z-index:30;background:rgba(31,31,31,0.45)"></div>
+  <aside role="dialog" aria-modal="true" aria-label="{{ panelTitle }}" style="position:absolute;top:0;right:0;bottom:0;z-index:31;width:min(460px,100%);background:#FFFFFF;box-shadow:-8px 0 32px rgba(60,16,83,0.18);display:flex;flex-direction:column">
+    <div style="flex:none;display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #E3DAEB">
+      <h2 style="margin:0;flex:1;font:800 20px/1.3 Montserrat,sans-serif">{{ panelTitle }}</h2>
+      <button onClick="{{ closePanel }}" aria-label="Close" style="width:44px;height:44px;border-radius:999px;border:none;background:#F5F5F7;cursor:pointer;font-size:18px;display:grid;place-items:center" style-hover="background:#F1EAF7"><i class="ph ph-x"></i></button>
+    </div>
+    <div style="flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:18px">
+      <sc-if value="{{ isWhy }}">
+        <div style="background:#F1EAF7;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+          <span style="width:44px;height:44px;flex:none;border-radius:999px;background:{{ avBg }};color:{{ avFg }};display:grid;place-items:center;font:800 14px Montserrat,sans-serif;border:2px solid #FFFFFF">{{ pInitials }}</span>
+          <span style="font-size:15px;line-height:1.5"><strong>{{ pName }}</strong> · {{ pDesc }}</span>
+        </div>
+        <sc-for list="{{ whyItems }}" as="w" hint-placeholder-count="4">
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <span style="width:40px;height:40px;flex:none;border-radius:999px;background:#F1EAF7;color:#5A287D;display:grid;place-items:center;font-size:20px"><i class="ph ph-{{ w.icon }}"></i></span>
+            <div style="display:flex;flex-direction:column;gap:4px"><h3 style="margin:0;font:700 16px Montserrat,sans-serif">{{ w.title }}</h3><p style="margin:0;font-size:15px;line-height:1.6;color:#1F1F1F">{{ w.text }}</p></div>
+          </div>
+        </sc-for>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:14px 0;border-top:1px solid #E3DAEB">
+          <span style="font:700 14px 'Nunito Sans',sans-serif">How FinTime talks to you</span>
+          <div role="radiogroup" aria-label="How FinTime talks to you" style="align-self:flex-start;display:flex;background:#F1EAF7;border-radius:999px;padding:4px;gap:2px">
+            <sc-for list="{{ toneSeg }}" as="o" hint-placeholder-count="3">
+              <button role="radio" aria-checked="{{ o.on }}" onClick="{{ o.onClick }}" style="background:{{ o.bg }};color:{{ o.fg }};border:none;border-radius:999px;min-height:40px;padding:0 16px;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer">{{ o.label }}</button>
+            </sc-for>
+          </div>
+          <span style="font-size:14px;color:#5E5E5E;line-height:1.5">{{ toneHelp }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;padding-top:14px;border-top:1px solid #E3DAEB">
+          <span style="font:700 14px 'Nunito Sans',sans-serif">Tips picked for you</span>
+          <sc-for list="{{ tipNames }}" as="n" hint-placeholder-count="3">
+            <span style="display:flex;align-items:center;gap:8px;font-size:15px"><i class="ph ph-check" style="color:#007A4D"></i>{{ n }}</span>
+          </sc-for>
+        </div>
+        <p style="margin:0;font-size:14px;line-height:1.6;color:#5E5E5E;background:#F5F5F7;border-radius:12px;padding:12px 14px">Your persona only changes how FinTime plans and explains. It never changes which NatWest products you can get.</p>
+      </sc-if>
+      <sc-if value="{{ isCalc }}">
+        <ol style="margin:0;padding:0 0 0 22px;display:flex;flex-direction:column;gap:10px;font-size:16px;line-height:1.55">
+          <sc-for list="{{ calcSteps }}" as="x" hint-placeholder-count="4"><li>{{ x }}</li></sc-for>
+        </ol>
+        <div style="display:flex;flex-direction:column;gap:4px;padding-top:14px;border-top:1px solid #E3DAEB">
+          <h3 style="margin:0;font:700 15px Montserrat,sans-serif;display:flex;align-items:center;gap:8px"><i class="ph ph-database" style="color:#5A287D"></i>Where the numbers come from</h3>
+          <p style="margin:0;font-size:15px;line-height:1.6">{{ calcSources }}</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding-top:14px;border-top:1px solid #E3DAEB">
+          <h3 style="margin:0;font:700 15px Montserrat,sans-serif;display:flex;align-items:center;gap:8px"><i class="ph ph-question" style="color:#5A287D"></i>What we don't know</h3>
+          <p style="margin:0;font-size:15px;line-height:1.6">{{ calcUnknown }}</p>
+        </div>
+        <p style="margin:0;font-size:13px;color:#5E5E5E">General information, not financial or tax advice.</p>
+      </sc-if>
+    </div>
+  </aside>
+</sc-if>
+
+<sc-if value="{{ hasToast }}">
+  <div role="status" style="position:absolute;top:76px;left:50%;transform:translateX(-50%);z-index:40;width:max-content;max-width:calc(100% - 24px);background:#1F1F1F;color:#FFFFFF;border-radius:12px;padding:12px 16px;font-size:15px;line-height:1.4;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(31,31,31,0.25)"><i class="ph ph-check-circle" style="font-size:20px;color:#F1EAF7"></i>{{ toast }}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;mobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;persona&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sam&quot;,&quot;alex&quot;,&quot;maya&quot;],&quot;default&quot;:&quot;sam&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;landing&quot;,&quot;dashboard&quot;,&quot;afford&quot;,&quot;activity&quot;,&quot;household&quot;,&quot;tips&quot;,&quot;chat&quot;],&quot;default&quot;:&quot;landing&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;dataState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;missing&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;States&quot;},&quot;tone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;friendly&quot;,&quot;direct&quot;,&quot;simple&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;States&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;panel&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;chatOpen&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;chatDemo&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;breakdown&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;}}">
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WD=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const dt=d=>new Date(2026,10,7+d);
+const dS=d=>{const x=dt(d);return x.getDate()+' '+MON[x.getMonth()]};
+const dL=d=>{const x=dt(d);return WD[x.getDay()].slice(0,3)+' '+x.getDate()+' '+MON[x.getMonth()]};
+const iso=d=>{const x=dt(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
+const fromIso=s=>{const a=(s||'').split('-').map(Number);if(a.length<3||!a[0])return 0;return Math.round((new Date(a[0],a[1]-1,a[2])-new Date(2026,10,7))/864e5)};
+const gbp=(n,dp)=>(n<0?'−£':'£')+Math.abs(n).toLocaleString('en-GB',{minimumFractionDigits:dp||0,maximumFractionDigits:dp||0});
+const sum=a=>a.reduce((t,x)=>t+x.amt,0);
+const SEV={high:{label:'High',icon:'warning-octagon',bg:'#C8102E',fg:'#FFFFFF',dot:'#C8102E',glyph:'!',gf:'#FFFFFF'},med:{label:'Medium',icon:'warning',bg:'#F2A900',fg:'#1F1F1F',dot:'#F2A900',glyph:'!',gf:'#1F1F1F'},low:{label:'Low',icon:'info',bg:'#F1EAF7',fg:'#5A287D',dot:'#7B3FA0',glyph:'i',gf:'#FFFFFF'}};
+const ICON={Groceries:'shopping-cart',Takeaway:'hamburger','Eating out':'coffee',Transport:'bus',Subscriptions:'music-notes',Income:'arrow-down-left',Clothes:'t-shirt',Phone:'device-mobile',Phones:'device-mobile',Shopping:'package',Energy:'lightning',Fuel:'gas-pump','School shoes':'sneaker',Childcare:'baby'};
+
+const mayaEv=(()=>{const e=[];[3,17,31,47,57,73,87].forEach(d=>e.push([d,320]));[6,13,20,27,34,48].forEach(d=>e.push([d,160]));[55,62,69,76,83,90].forEach(d=>e.push([d,260]));e.push([11,760],[41,260],[72,820],[8,-140],[14,-34],[20,-98],[24,-518],[38,-180],[44,-34],[50,-98],[55,-518],[69,-180],[75,-34],[81,-98],[86,-518]);return e})();
+
+const P={
+ sam:{id:'sam',name:'Sam',short:'Sam',chatName:'Sam',initials:'S',avBg:'#F1EAF7',avFg:'#5A287D',city:'Manchester',
+  desc:'Student with irregular part-time income, Manchester',traits:['Irregular income','Student','Renting'],does:'Plans around gaps between paydays',
+  bannerLead:'Tuned for Sam, student.',banner:'Your forecast widens its safety band when pay is uncertain.',tone:'friendly',default:true,
+  balance:1486,
+  pots:[{name:'Christmas',amt:80,target:150,due:'Due 20 Dec'},{name:'Rent buffer',amt:150,target:null,due:'No due date'},{name:'Railcard',amt:30,target:30,due:'Due 15 Nov'}],
+  bills:[{name:'Rent',amt:950,due:'1 Dec'},{name:'Bus pass',amt:48,due:'17 Nov'},{name:'Phone (Vodafone)',amt:18,due:'22 Nov'}],
+  start:1486,spend:d=>(d>=40&&d<=49)?46:21,
+  events:[[7,310],[10,-48],[15,-18],[21,290],[24,-950],[35,260],[45,-18],[50,260],[60,1650],[74,270],[86,-950]],
+  band:[20,4.5],dipWin:[40,60],markers:[{d:24,label:'Rent due 1 Dec',sev:'med'}],
+  dipReason:'rent of £950 leaves on 1 Dec and Christmas spending lands before your next shift pay',recover:'your student loan of £1,650 arrives on 6 Jan',
+  bandWhy:'your shift pay changes from week to week',incomeNote:'Shift pay arrives about every 2 weeks, and your student loan on 6 Jan.',
+  unknown:"Your exact shift hours over Christmas. The rota isn't out yet, so we use a range.",
+  assumptions:['Shift pay of about £290 every 2 weeks. It has varied by up to 40%.','Rent of £950 on 1 Dec and 1 Feb.','Everyday spending of about £21 a day, rising to about £46 a day from 17 to 26 Dec.','Student loan of £1,650 on 6 Jan, from your Student Finance schedule.','Christmas shift pay of about £260 on 27 Dec. Not confirmed yet.'],
+  group:'students renting in Manchester',
+  bench:[{label:'Groceries',you:104,lo:90,hi:130},{label:'Takeaways and eating out',you:96,lo:40,hi:80},{label:'Transport',you:48,lo:35,hi:60}],benchMax:160,
+  tips:[{icon:'house-line',title:'Student council tax exemption',est:'Up to £1,400 a year',body:'Homes where everyone is a full-time student pay no council tax. Send Manchester City Council the student certificate from your university.',why:"You're a full-time student renting in Manchester."},
+   {icon:'train',title:'16-25 Railcard',est:'About £90 a year',body:'A third off most rail fares for £35 a year. You spent about £370 on trains in the last 12 months.',why:'You travel by train most months and are under 26.'},
+   {icon:'bicycle',title:'Cycle to Work scheme',est:'About £200 on a £600 bike',body:'Many employers, including part-time ones, let you buy a bike through salary sacrifice and spread the cost.',why:'You spend about £48 a month on buses.'}],
+  prompts:[{q:'Can I afford £60 trainers?',k:'afford',a:{amt:60,item:'trainers'}},{q:'Why is my balance dipping in December?',k:'dip'},{q:'What can I cut this month?',k:'extra'}],
+  extra:{friendly:"Takeaways are your most flexible spend. You spent £96 on them last month. If you halved that this month, you'd have about £48 more at your lowest point on 26 Dec. Only if it suits you, of course.",direct:'Takeaways: £96 last month. Halve them and your 26 Dec low rises by about £48.',simple:'You spent £96 on takeaways last month. Spending half would leave you £48 more on 26 Dec.',nums:[['Takeaways in October','£96'],['Takeaways in September','£54'],['Half of October','£48']]},
+  afford:{item:'Trainers',amt:60,d:8},quick:[25,60,150,400],
+  alerts:c=>[{sev:'high',type:'Risk · '+dS(c.d),title:`Your balance could drop to ${gbp(c.v)} around ${dS(c.d)}.`,msg:'Christmas spending lands before your next shift pay. Your student loan arrives on 6 Jan.',action:'Plan for December',go:'chat-dip'},
+   {sev:'med',type:'Sudden change',title:'Takeaways are up £42 on last month.',msg:'You spent £96 on takeaways in October, up from £54 in September.',action:'See takeaways',go:'activity'},
+   {sev:'low',type:'Upcoming bill · 1 Dec',title:'Rent of £950 is due on 1 Dec.',msg:"You're on track to cover it. It's already counted in Safe to spend.",action:'View bills',go:'bills'}],
+  txns:[{date:'Friday 6 November',items:[['s1','Tesco Express','Groceries',-12.40,'need'],['s2','Uber Eats','Takeaway',-18.90,'want'],['s3','Bee Network bus','Transport',-2.00,'need']]},
+   {date:'Thursday 5 November',items:[['s4','Pret A Manger','Eating out',-4.85,'want'],['s5','Spotify Student','Subscriptions',-5.99,'want']]},
+   {date:'Wednesday 4 November',items:[['s6','Shift pay · The Deaf Institute','Income',148.20,'income'],['s7','Aldi','Groceries',-23.16,'need']]},
+   {date:'Tuesday 3 November',items:[['s8','ASOS','Clothes',-32.00,'want'],['s9','Vodafone','Phone',-18.00,'need']]}]},
+ alex:{id:'alex',name:'Alex',short:'Alex',chatName:'Alex',initials:'A',avBg:'#5A287D',avFg:'#FFFFFF',city:'Leeds',
+  desc:'Salaried office worker with a fixed monthly income, Leeds',traits:['Fixed salary','Paid monthly','Renting'],does:'Finds the headroom in a steady budget',
+  bannerLead:'Tuned for Alex, salaried.',banner:'Your pay is steady, so your forecast band stays narrow and we look for room to save.',tone:'direct',
+  balance:2840,
+  pots:[{name:'Holiday',amt:350,target:1200,due:'Due 1 Jun'},{name:'Emergency fund',amt:250,target:null,due:'No due date'}],
+  bills:[{name:'Rent',amt:1100,due:'1 Dec'},{name:'Council tax',amt:145,due:'1 Dec'},{name:'Energy (Octopus)',amt:112,due:'12 Nov'},{name:'Gym',amt:38,due:'8 Nov'},{name:'Broadband',amt:30,due:'19 Nov'},{name:'Phone',amt:22,due:'17 Nov'},{name:'Streaming',amt:18,due:'23 Nov'}],
+  start:2840,spend:d=>(d>=38&&d<=50)?58:32,
+  events:[[1,-38],[5,-112],[10,-22],[12,-30],[16,-18],[21,2350],[24,-1245],[31,-38],[35,-112],[40,-22],[42,-30],[46,-18],[51,2350],[55,-1245],[62,-38],[66,-112],[71,-22],[73,-30],[77,-18],[82,2350],[86,-1245]],
+  band:[15,1.2],dipWin:[30,55],markers:[{d:24,label:'Rent + council tax',sev:'low'}],
+  dipReason:'Christmas spending of about £58 a day runs from 15 to 27 Dec',recover:'your salary lands on 28 Dec',
+  bandWhy:'even a fixed salary comes with small surprises',incomeNote:'Your salary of £2,350 arrives on the 28th of each month.',
+  unknown:"One-off costs you haven't paid yet, like gifts or travel over Christmas.",
+  assumptions:['Salary of £2,350 on the 28th of each month. Fixed.','Rent of £1,100 and council tax of £145 on the 1st.','Everyday spending of about £32 a day, about £58 a day from 15 to 27 Dec.','Regular bills: energy, gym, phone, broadband and streaming.'],
+  group:'salaried renters in Leeds',
+  bench:[{label:'Groceries',you:190,lo:150,hi:230},{label:'Eating out',you:186,lo:90,hi:170},{label:'Subscriptions',you:56,lo:30,hi:70}],benchMax:260,
+  tips:[{icon:'bicycle',title:'Cycle to Work scheme',est:'About £320 on a £1,000 bike',body:'Buy a bike through salary sacrifice. You save on tax and National Insurance and pay monthly.',why:'You commute by train most days, and your employer offers the scheme.'},
+   {icon:'lightning',title:'Check your energy tariff',est:'About £120 a year',body:'Your bill went up £19 this month. A fixed tariff could cost less over winter. Compare before you switch.',why:'Your Octopus Energy bill rose this month.'},
+   {icon:'piggy-bank',title:'Workplace pension match',est:'Up to £700 a year',body:'Some employers add more when you pay in more. Check your staff handbook or HR portal.',why:'You have a steady salary and room left over most months.'}],
+  prompts:[{q:'Can I afford a £450 weekend away?',k:'afford',a:{amt:450,item:'a weekend away'}},{q:'How much could I save each month?',k:'extra'},{q:'Why is my balance dipping in December?',k:'dip'}],
+  extra:{friendly:"You could put about £320 a month aside without touching your bills. That's what's usually left after payday, minus a £200 buffer for surprises.",direct:'About £320 a month. Average left after bills is £520, minus a £200 buffer.',simple:'You could save about £320 a month. We kept £200 spare for surprises.',nums:[['Average left after bills','£520'],['Buffer kept spare','£200'],['Suggested saving','£320']]},
+  afford:{item:'Weekend in Edinburgh',amt:450,d:35},quick:[50,150,450,900],
+  alerts:c=>[{sev:'med',type:'Overspend',title:"You've spent £186 of your £200 eating-out budget.",msg:'There are 23 days left in this budget period.',action:'See eating out',go:'activity'},
+   {sev:'low',type:'Sudden change',title:'Your energy bill went up £19.',msg:'Octopus Energy took £112 this month, up from £93.',action:'Compare tariffs',go:'tips'},
+   {sev:'low',type:'Headroom',title:`Your lowest point this winter is about ${gbp(c.v)}.`,msg:`That's on ${dS(c.d)}. Moving some to savings is one option.`,action:'Ask the coach',go:'chat-extra'}],
+  txns:[{date:'Friday 6 November',items:[['a1',"Sainsbury's",'Groceries',-46.20,'need'],['a2','Pret A Manger','Eating out',-7.10,'want'],['a3','Northern Rail','Transport',-6.80,'need']]},
+   {date:'Thursday 5 November',items:[['a4','Amazon','Shopping',-24.99,'want'],['a5','Netflix','Subscriptions',-10.99,'want']]},
+   {date:'Wednesday 4 November',items:[['a6','Octopus Energy','Energy',-112.00,'need'],['a7','Dishoom','Eating out',-38.50,'want']]},
+   {date:'Tuesday 3 November',items:[['a8','Tesco','Groceries',-22.35,'need'],['a9','Uber','Transport',-11.40,'want']]}]},
+ maya:{id:'maya',name:'Maya & Dan',short:'Maya & Dan',chatName:'Maya and Dan',initials:'M&D',avBg:'#3C1053',avFg:'#FFFFFF',city:'Birmingham',
+  desc:'Parents in a low-income household, shift and agency work, Birmingham',traits:['Household of 4','Shift & agency work','Universal Credit'],does:"Keeps the whole household's bills covered",
+  bannerLead:"Tuned for Maya & Dan's household.",banner:'We combine both incomes and plan around shift changes and Universal Credit.',tone:'simple',household:true,
+  balance:1120,
+  pots:[{name:'Christmas',amt:70,target:200,due:'Due 18 Dec'},{name:'School shoes',amt:40,target:60,due:'Due 4 Jan'},{name:'Rainy day',amt:40,target:null,due:'No due date'}],
+  bills:[{name:'Rent (your share)',amt:420,due:'1 Dec'},{name:'Energy',amt:140,due:'15 Nov'},{name:'Childcare',amt:98,due:'27 Nov'},{name:'Council tax',amt:98,due:'1 Dec'},{name:'Phones',amt:34,due:'21 Nov'}],
+  start:1120,spend:d=>(d>=36&&d<=46)?115:38,events:mayaEv,
+  band:[25,3],dipWin:[40,70],markers:[{d:41,label:'Lower UC 18 Dec',sev:'med'}],
+  dipReason:"January rent goes out straight after Christmas, and December's Universal Credit is lower",recover:"Dan's shift pay arrives on 3 Jan",
+  bandWhy:'two variable incomes and Universal Credit can all change',incomeNote:"Maya's agency pay each Friday, Dan's shift pay every 2 weeks, and Universal Credit on the 18th.",
+  unknown:"The exact Universal Credit amount for December. It shows in your UC journal a few days before payment.",
+  assumptions:["Maya's agency pay of about £160 each Friday, rising to about £260 in January.","Dan's shift pay of about £320 every 2 weeks.",'Universal Credit of £760 on 18 Nov, estimated £260 on 18 Dec.','Rent share and council tax of £518 on the 1st.','Everyday spending of about £38 a day, about £115 a day from 13 to 23 Dec.'],
+  group:'families of 4 in Birmingham',
+  bench:[{label:'Groceries',you:420,lo:380,hi:520},{label:'Energy',you:140,lo:120,hi:190},{label:'Fuel and transport',you:120,lo:80,hi:160}],benchMax:600,
+  tips:[{icon:'thermometer-hot',title:'Warm Home Discount',est:'£150 off this winter',body:'A one-off discount on your electricity bill. If you get Universal Credit, it is often applied automatically.',why:'You get Universal Credit and your energy bill rises in winter.'},
+   {icon:'baby',title:'Healthy Start',est:'About £221 a year per child',body:'A prepaid card for milk, fruit and vegetables for children under 4. Apply on the NHS Healthy Start website.',why:'You have a child under 4 and get Universal Credit.'},
+   {icon:'hand-heart',title:'Universal Credit childcare costs',est:'Up to £1,000 a year',body:'Universal Credit can pay back up to 85% of childcare costs. Report them in your UC journal.',why:'You pay Little Acorns Nursery £98 a month.'}],
+  prompts:[{q:'Can we afford £120 winter coats?',k:'afford',a:{amt:120,item:'winter coats'}},{q:'Why is our Universal Credit lower in December?',k:'extra'},{q:'Why is money tight in early January?',k:'dip'}],
+  extra:{friendly:"Universal Credit looks at what you both earned in each assessment period. You earned more in November, so December's payment is estimated at £260, not the usual £760. That's our estimate. Your UC journal will show the exact amount.",direct:'You both earned more in November. UC drops by 55p for each £1 over your work allowance. Estimated December payment: £260, down from £760. Check your UC journal to confirm.',simple:"You earned more in November. So December's Universal Credit will be lower. We think about £260. Your UC journal will show the real amount.",nums:[['Usual UC payment','£760'],['Extra earned in November','About £900'],['Reduction','55p per £1'],['Estimated December payment','£260']]},
+  afford:{item:"Kids' winter coats",amt:120,d:14},quick:[20,60,120,250],
+  alerts:c=>[{sev:'high',type:'Risk · '+dS(c.d),title:`Household balance could drop to ${gbp(c.v)} around ${dS(c.d)}.`,msg:"January rent follows Christmas, and December's Universal Credit is estimated lower.",action:"See what's changing",go:'chat-dip'},
+   {sev:'med',type:'Sudden change',title:'Energy bill up £40 for winter.',msg:'We expect £180 in December, up from £140.',action:'Check Warm Home Discount',go:'tips'},
+   {sev:'low',type:'Upcoming bill · 27 Nov',title:'Childcare of £98 is due on 27 Nov.',msg:"Little Acorns Nursery. It's already counted in Safe to spend.",action:'View bills',go:'bills'}],
+  txns:[{date:'Friday 6 November',items:[['m1','Agency pay · Staffline','Income',162.40,'income','Maya'],['m2','Lidl','Groceries',-38.40,'need','Maya'],['m3','Greggs','Eating out',-6.20,'want','Dan']]},
+   {date:'Thursday 5 November',items:[['m4','Shell','Fuel',-30.00,'need','Dan'],['m5','Sky Mobile','Phones',-17.00,'need','Maya']]},
+   {date:'Wednesday 4 November',items:[['m6','Primark','School shoes',-26.00,'need','Maya'],['m7',"Domino's",'Takeaway',-21.99,'want','Dan']]},
+   {date:'Tuesday 3 November',items:[['m8','Aldi','Groceries',-54.10,'need','Dan'],['m9','Little Acorns Nursery','Childcare',-24.50,'need','Maya']]}]}
+};
+Object.values(P).forEach(p=>{const e=[p.start];for(let d=1;d<=90;d++){let v=e[d-1]-p.spend(d);p.events.forEach(x=>{if(x[0]===d)v+=x[1]});e.push(Math.round(v))}p.exp=e;p.w=d=>Math.round(p.band[0]+p.band[1]*d);p.potTotal=sum(p.pots);p.billTotal=sum(p.bills);p.safe=p.balance-p.potTotal-p.billTotal;});
+const minIn=(p,a,b)=>{let m=Infinity,md=a;for(let t=a;t<=Math.min(b,90);t++){if(p.exp[t]<m){m=p.exp[t];md=t}}return{v:m,d:md}};
+const incomeNear=(p,d)=>{for(let t=d;t>=Math.max(0,d-3);t--){if(p.events.some(e=>e[0]===t&&e[1]>0))return t}return null};
+function verdict(p,d,amt){const h=minIn(p,d,d+30);const after=h.v-p.potTotal-amt;const st=after>=50?'ok':after>=0?'tight':'no';let best=null;
+ if(st==='no'){for(let t=d+1;t<=60;t++){const a=minIn(p,t,t+30).v-p.potTotal-amt;if(a>=0){best={d:t,after:a};break}}}
+ else{let bd=d,ba=after;for(let t=d+1;t<=60;t++){const a=minIn(p,t,t+30).v-p.potTotal-amt;if(a>ba){ba=a;bd=t}}if(ba-after>=20)best={d:bd,after:ba}}
+ return{after,st,low:h.v,lowDay:h.d,best}}
+const TONES=[['friendly','Friendly','smiley'],['direct','Direct','target'],['simple','Simple','text-aa']];
+
+class Component extends DCLogic {
+  constructor(props){super(props);const pr=props||{};const pid=P[pr.persona]?pr.persona:'sam';const p=P[pid];const mobile=!!pr.mobile;
+    const scr=pr.screen||'landing';
+    this.state={persona:pid,pick:pid,screen:(scr==='chat'&&!mobile)?'dashboard':scr,tone:pr.tone&&pr.tone!=='auto'?pr.tone:null,dataState:pr.dataState||'live',
+      panel:pr.panel||'none',chatOpen:!!pr.chatOpen||(scr==='chat'&&!mobile),menuOpen:false,toast:'',horizon:60,scrub:minIn(p,p.dipWin[0],p.dipWin[1]).d,
+      assumOpen:false,breakdown:pr.breakdown||null,afford:{item:p.afford.item,amt:p.afford.amt,d:p.afford.d},numsOpen:false,labels:{},filter:'all',
+      msgs:[],draft:'',typing:false,speaking:null,openNums:{}};
+    this.state.msgs=this.initMsgs(pid,pr.tone&&pr.tone!=='auto'?pr.tone:p.tone,pr.chatDemo);
+    this.mainRef=React.createRef();this.msgRef=React.createRef();this.uid=100;
+  }
+  initMsgs(pid,tone,demo){const p=P[pid];const n=p.chatName;
+    const g={friendly:`Hi ${n}! I'm your FinTime coach. I've looked 90 days ahead for you. What would you like to check?`,direct:`Hi ${n}. Your forecast is up to date. What do you want to check?`,simple:`Hi ${n}. I can help with your money. Pick a question below or type your own.`}[tone];
+    const m=[{id:'g',role:'coach',text:g,nums:null}];
+    if(demo){const q=p.prompts[0];m.push({id:'d1',role:'user',text:q.q});const r=this.reply(p,tone,q.k,q.a);m.push({id:'d2',role:'coach',text:r.text,nums:r.nums})}
+    return m}
+  reply(p,tone,k,a){
+    if(k==='afford'){const v=verdict(p,0,a.amt);const it=a.item||'it';const tight=v.st==='tight';
+      const nums=[['Balance today',gbp(p.balance)],['Lowest point in the next 30 days',gbp(v.low)+' on '+dS(v.lowDay)],['Kept aside in pots',gbp(p.potTotal)],['Purchase',gbp(a.amt)],['Left at lowest point',gbp(v.after)]];
+      if(v.st!=='no')return{nums,text:{friendly:`Yes, ${p.id==='maya'?'you can':'you can'} afford ${it} for ${gbp(a.amt)} today. At your lowest point, on ${dS(v.lowDay)}, you'd still have ${gbp(v.after)} after keeping your pots aside.${tight?" That's quite tight, so it's worth a think.":''} Waiting or skipping it are good choices too.`,direct:`Yes. Your lowest point would be ${gbp(v.after)} on ${dS(v.lowDay)}, with pots untouched.${tight?' That is tight.':''}`,simple:`Yes, you can. You would still have ${gbp(v.after)} at your lowest point. That is on ${dS(v.lowDay)}.`}[tone]};
+      const b=v.best?dS(v.best.d):null;
+      return{nums,text:{friendly:`Not yet. Buying ${it} today would leave you ${gbp(-v.after)} short at your lowest point on ${dS(v.lowDay)}. ${b?`It would fit from ${b}.`:"It doesn't fit in the next 8 weeks, so a pot could help you save towards it."} Not buying is a perfectly good choice too.`,direct:`Not yet. You'd be ${gbp(-v.after)} short on ${dS(v.lowDay)}. ${b?'Earliest date that works: '+b+'.':'No date in the next 8 weeks works.'}`,simple:`Not yet. You would be ${gbp(-v.after)} short on ${dS(v.lowDay)}. ${b?'You could buy it from '+b+'.':'Saving in a pot could help.'}`}[tone]}}
+    if(k==='dip'){const m=minIn(p,p.dipWin[0],p.dipWin[1]);const w=p.w(m.d);
+      return{nums:[['Expected lowest balance',gbp(m.v)],['Likely range',gbp(m.v-w)+' to '+gbp(m.v+w)],['Date',dL(m.d)],['Kept aside in pots',gbp(p.potTotal)]],
+       text:{friendly:`Good question. Your balance is lowest around ${dS(m.d)}, at about ${gbp(m.v)}. That's because ${p.dipReason}. It picks up again when ${p.recover}.`,direct:`Lowest point: ${gbp(m.v)} on ${dS(m.d)}. Cause: ${p.dipReason}. It recovers when ${p.recover}.`,simple:`Your money is lowest on ${dS(m.d)}. You may have about ${gbp(m.v)}. This is because ${p.dipReason}. It gets better when ${p.recover}.`}[tone]}}
+    if(k==='extra')return{nums:p.extra.nums,text:p.extra[tone]};
+    return{nums:null,text:{friendly:"I can help with what you can afford, why your balance moves, and bills coming up. Try one of the questions below, or ask me about a price, like £40.",direct:'I can check purchases, explain balance changes and list upcoming bills. Include an amount to test a purchase.',simple:'I can help with buying things, your balance and your bills. Try a question below.'}[tone]}}
+  P(){return P[this.state.persona]}
+  tone(){return this.state.tone||this.P().tone}
+  componentDidUpdate(pp,ps){const pr=this.props;
+    if(pp.persona!==pr.persona&&P[pr.persona])this.setPersona(pr.persona,true);
+    if(pp.screen!==pr.screen&&pr.screen)this.go(pr.screen);
+    if(pp.dataState!==pr.dataState)this.setState({dataState:pr.dataState||'live'});
+    if(pp.tone!==pr.tone)this.setState({tone:pr.tone&&pr.tone!=='auto'?pr.tone:null});
+    if(ps.msgs!==this.state.msgs||ps.typing!==this.state.typing){const el=this.msgRef.current;if(el)el.scrollTop=el.scrollHeight}
+  }
+  componentDidMount(){const el=this.msgRef.current;if(el)el.scrollTop=el.scrollHeight}
+  componentWillUnmount(){clearTimeout(this.tt);clearTimeout(this.rt);try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(e){}}
+  setPersona(id,silent){const p=P[id];clearTimeout(this.tt);
+    this.setState(s=>({persona:id,pick:id,menuOpen:false,tone:null,scrub:minIn(p,p.dipWin[0],p.dipWin[1]).d,afford:{item:p.afford.item,amt:p.afford.amt,d:p.afford.d},breakdown:null,labels:{},openNums:{},
+      msgs:this.initMsgs(id,p.tone,false),screen:s.screen==='landing'?'dashboard':s.screen,toast:silent?'':`Now viewing as ${p.name}. Numbers, tips and coach tone have updated.`}));
+    if(!silent)this.tt=setTimeout(()=>this.setState({toast:''}),3500);
+    this.top()}
+  top(){const el=this.mainRef.current;if(el)el.scrollTop=0}
+  go(scr){const mobile=!!this.props.mobile;if(scr==='chat'&&!mobile){this.setState(s=>({chatOpen:true,menuOpen:false,screen:s.screen==='landing'?'dashboard':s.screen}));return}
+    this.setState({screen:scr,menuOpen:false});setTimeout(()=>this.top(),0)}
+  send(text,k,a){if(!text)return;const p=this.P(),tone=this.tone();
+    if(!k){const m=text.match(/£?\s?(\d+(?:\.\d+)?)/);if(m&&/afford|buy|£/i.test(text)){k='afford';a={amt:parseFloat(m[1]),item:'it'}}else if(/dip|low|tight|december|january|why/i.test(text))k='dip';else if(/universal|uc|save|cut/i.test(text))k='extra';else k='generic'}
+    this.setState(s=>({msgs:s.msgs.concat([{id:'u'+(++this.uid),role:'user',text}]),draft:'',typing:true}));
+    if(this.props.mobile&&this.state.screen!=='chat')this.setState({screen:'chat'});
+    if(!this.props.mobile)this.setState({chatOpen:true});
+    clearTimeout(this.rt);this.rt=setTimeout(()=>{const r=this.reply(p,tone,k,a);this.setState(s=>({typing:false,msgs:s.msgs.concat([{id:'c'+(++this.uid),role:'coach',text:r.text,nums:r.nums}])}))},700)}
+  speak(m){const ss=window.speechSynthesis;if(!ss)return;if(this.state.speaking===m.id){ss.cancel();this.setState({speaking:null});return}
+    ss.cancel();const u=new SpeechSynthesisUtterance(m.text);u.lang='en-GB';u.rate=this.tone()==='simple'?0.9:1;u.onend=()=>this.setState({speaking:null});ss.speak(u);this.setState({speaking:m.id})}
+  seg(opts,cur,set){return opts.map(o=>({label:o[1],icon:o[2]||'',on:cur===o[0],bg:cur===o[0]?'#5A287D':'transparent',fg:cur===o[0]?'#FFFFFF':'#3C1053',onClick:()=>set(o[0])}))}
+  chart(p,H,mobile,cutoff,scrub){
+    const W=mobile?360:960,Ht=mobile?240:300,pl=mobile?46:56,pr=mobile?10:16,pt=30,pb=28;const end=Math.min(H,cutoff);
+    let lo=Infinity,hi=-Infinity;for(let d=0;d<=end;d++){const w=p.w(d);lo=Math.min(lo,p.exp[d]-w);hi=Math.max(hi,p.exp[d]+w)}
+    lo=Math.min(lo,0);const range=hi-lo;const step=[100,250,500,1000,2000].find(s=>range/s<=5)||2000;const y0=Math.floor(lo/step)*step,y1=Math.ceil(hi/step)*step;
+    const X=d=>+(pl+(W-pl-pr)*d/H).toFixed(1),Y=v=>+(pt+(Ht-pt-pb)*(y1-v)/(y1-y0)).toFixed(1);
+    let line='',top='',bot=[];for(let d=0;d<=end;d++){line+=(d?'L':'M')+X(d)+' '+Y(p.exp[d]);top+=(d?'L':'M')+X(d)+' '+Y(p.exp[d]+p.w(d));bot.unshift('L'+X(d)+' '+Y(p.exp[d]-p.w(d)))}
+    const yTicks=[];for(let v=y0;v<=y1;v+=step)yTicks.push({y:Y(v),ty:Y(v)+4,x1:pl,x2:W-pr,lx:pl-8,label:v===0?'£0':(v<0?'−£':'£')+(Math.abs(v)>=1000?(Math.abs(v)/1000)+'k':Math.abs(v))});
+    const xTicks=[{x:X(0),y:Ht-6,label:'Today',anchor:'start'}];for(let d=1;d<=H;d++){if(dt(d).getDate()===1&&X(d)-X(0)>40)xTicks.push({x:X(d),y:Ht-6,label:dS(d),anchor:d>H-4?'end':'middle'})}
+    const mk=[];p.markers.forEach(m=>{if(m.d<=end)mk.push(m)});const mn=minIn(p,0,end);const lw=mn.v-p.w(mn.d);
+    mk.push({d:mn.d,label:'Lowest '+gbp(mn.v)+' · '+dS(mn.d),sev:lw<0?'high':mn.v<300?'med':'low'});
+    const markers=mk.map(m=>{const x=X(m.d),y=Y(p.exp[m.d]);const s=SEV[m.sev];const anchor=x>W-110?'end':x<pl+80?'start':'middle';return{x,y,gy:y+4,lx:x,ly:Math.max(14,y-16),label:m.label,color:s.dot,glyph:s.glyph,glyphFill:s.gf,anchor}});
+    const riskList=mk.map(m=>{const s=SEV[m.sev];return{label:m.label.replace(/ · .*/,'')+' · '+dS(m.d),sev:s.label,icon:s.icon,bg:s.bg,fg:s.fg}});
+    const sc=Math.min(scrub,H);return{cw:W,ch:Ht,yTicks,xTicks,linePath:line,bandPath:top+bot.join('')+'Z',hasZero:y0<0,zy:Y(0),zx1:pl,zx2:W-pr,markers,riskList,
+      sx:X(sc),sy:sc<=end?Y(p.exp[sc]):0,showSDot:sc<=end,sTop:pt-6,sBot:Ht-pb,mx:X(end)+4,my:pt,mw:Math.max(0,W-pr-X(end)-4),mh:Ht-pt-pb,mtx:(X(end)+W-pr)/2,mty:(pt+Ht-pb)/2,
+      chartAria:`Forecast for ${H} days. Lowest expected balance ${gbp(mn.v)} on ${dS(mn.d)}.`}}
+  calc(key,p,v){const s=this.state;
+    if(key==='safe')return{title:'How we worked out Safe to spend',steps:[`We start with your balance today: ${gbp(p.balance)}.`,`We set aside the money in your pots: ${gbp(p.potTotal)}. Pots stay untouched.`,`We take off bills due in the next 30 days: ${gbp(p.billTotal)} (${p.bills.map(b=>b.name.toLowerCase()).join(', ')}).`,`What's left is safe to spend: ${gbp(p.safe)}.`],sources:'Your NatWest current account balance, your pots, and bills that have come out at least twice before.',unknown:"Cash spending, and new bills we haven't seen yet. "+p.unknown};
+    if(key==='forecast')return{title:'How your forecast works',steps:[`We start from today's balance of ${gbp(p.balance)}.`,'We add the income we expect. '+p.incomeNote,'We take off bills and everyday spending, based on your last 90 days.',`The shaded band is the likely range. It starts at ±£${p.band[0]} and widens by about £${p.band[1]} for each day ahead, because ${p.bandWhy}.`],sources:'Your last 90 days of NatWest transactions, your regular payments, and schedules you have confirmed.',unknown:p.unknown};
+    if(key==='afford')return{title:'How we checked this purchase',steps:[`We look at your forecast for the 30 days after ${dS(s.afford.d)}.`,`The lowest expected balance in that time is ${gbp(v.low)}, on ${dS(v.lowDay)}.`,`We keep your pots aside: ${gbp(p.potTotal)}.`,`We take off the purchase: ${gbp(s.afford.amt)}. That leaves ${gbp(v.after)}.`,'If that is £50 or more, we say Affordable. Between £0 and £50, we say it is tight. Below £0, we say Not yet.'],sources:'Your forecast, your pots, and the amount and date you entered.',unknown:p.unknown};
+    if(key==='household')return{title:'How we combine your household',steps:['We add up the joint account balance: £1,120.','We keep aside your shared and personal pots: £150.','We take off bills due in the next 30 days: £790.','We split what is left by who pays which bills: Maya £95, Dan £85.'],sources:"The joint account, and each person's account if they have chosen to share it.",unknown:p.unknown};
+    if(key==='bench')return{title:'How benchmarks work',steps:[`We compare you with ${p.group}.`,'The usual range is the middle half of that group: a quarter spend less, a quarter spend more.','Your figure is your average over the last 3 months.'],sources:'Anonymised, grouped spending data. No one in the group can be identified. Sample data in this prototype.',unknown:'Why your spending differs. There are lots of good reasons to be outside the range.'};
+    return{title:'How we estimate savings',steps:['We use the public rates for each scheme.','Where we can, we apply them to your own spending. For example, your train or energy costs.','We round down, so the real saving may be a little higher.'],sources:'Public rates from GOV.UK and scheme providers, and your NatWest transactions.',unknown:'Whether you qualify. Each scheme checks this when you apply.'}}
+  renderVals(){
+    const s=this.state,p=this.P(),mobile=!!this.props.mobile,tone=this.tone();
+    const loading=s.dataState==='loading',missing=s.dataState==='missing',error=s.dataState==='error';const cutoff=missing?21:90;
+    const scr=s.screen;const landing=scr==='landing';
+    const setTone=t=>this.setState(st=>({tone:t,msgs:this.initMsgs(st.persona,t,false)}));
+    const toneSeg=this.seg(TONES,tone,setTone);
+    const navDef=[['dashboard','Home','house'],['afford','Can I afford it?','scales'],['activity','Transactions','receipt'],['household','Household','users-three'],['tips','Tips','lightbulb']];
+    const navItems=navDef.map(n=>({label:n[1],icon:n[2],current:scr===n[0]?'page':undefined,bg:scr===n[0]?'#3C1053':'transparent',onClick:()=>this.go(n[0])}));
+    const tabDef=[['dashboard','Home','house'],['afford','Afford','scales'],['chat','Coach','chat-circle-text'],['activity','Activity','receipt'],['tips','Tips','lightbulb']];
+    const tabs=tabDef.map(n=>({label:n[1],icon:n[2],current:scr===n[0]?'page':undefined,fg:scr===n[0]?'#5A287D':'#5E5E5E',bar:scr===n[0]?'#5A287D':'transparent',onClick:()=>this.go(n[0])}));
+    const personaCards=Object.values(P).map(x=>({name:x.name,short:x.short,initials:x.initials,avBg:x.avBg,avFg:x.avFg,desc:x.desc,traits:x.traits,does:x.does,selected:s.pick===x.id,
+      border:s.pick===x.id?'2px solid #5A287D':'1px solid #E3DAEB',bg:s.pick===x.id?'#FFFFFF':'#FFFFFF',onPick:()=>this.setState({pick:x.id}),onTry:e=>{e&&e.stopPropagation&&e.stopPropagation();this.setPersona(x.id,true);this.go('dashboard')}}));
+    const menuItems=Object.values(P).map(x=>({name:x.name,desc:x.desc,initials:x.initials,avBg:x.avBg,avFg:x.avFg,on:s.persona===x.id,bg:s.persona===x.id?'#F1EAF7':'transparent',onClick:()=>{if(x.id!==s.persona)this.setPersona(x.id);else this.setState({menuOpen:false})}}));
+    // dashboard
+    const bk=s.breakdown;const mkEq=(key,label,amt,sw,op)=>({label,amt:gbp(amt),sw,op,hasOp:!!op,on:bk===key,bg:bk===key?'#F1EAF7':'#FFFFFF',bd:bk===key?'#5A287D':'#E3DAEB',onClick:()=>this.setState({breakdown:bk===key?null:key})});
+    const eq=[mkEq('balance','Balance',p.balance,'#FFFFFF',''),mkEq('pots','Pots',p.potTotal,'#E3DAEB','−'),mkEq('bills','Upcoming bills',p.billTotal,'#3C1053','−'),mkEq('safe','Safe to spend',p.safe,'#007A4D','=')];
+    let bkRows=[],bkNote='';
+    if(bk==='balance'){bkRows=[{l:p.id==='maya'?'Joint current account':'Current account',sub:'Updated 09:40 today',r:gbp(p.balance)}];bkNote='Includes money in your pots, which we set aside next.'}
+    if(bk==='pots'){bkRows=p.pots.map(x=>({l:x.name,sub:x.due,r:gbp(x.amt)}));bkNote="Pots are kept aside. We never count them as spending money."}
+    if(bk==='bills'){bkRows=p.bills.map(x=>({l:x.name,sub:'Due '+x.due,r:gbp(x.amt)}));bkNote='Bills due in the next 30 days that have come out at least twice before.'}
+    if(bk==='safe'){bkRows=[{l:'About per day',sub:'Over the next 30 days',r:gbp(Math.floor(p.safe/30),2).replace('.00','')},{l:'About per week',sub:'Over the next 30 days',r:gbp(Math.floor(p.safe/30*7))}];bkNote="A guide, not a limit. Spending less is always fine."}
+    const al=p.alerts(minIn(p,p.dipWin[0],p.dipWin[1])).map(a=>{const sv=SEV[a.sev];return{...a,bg:sv.bg,fg:sv.fg,icon:sv.icon,sevLabel:sv.label,onClick:()=>{
+      if(a.go==='chat-dip'){const q=p.prompts.find(x=>x.k==='dip');this.send(q.q,'dip')}else if(a.go==='chat-extra'){const q=p.prompts.find(x=>x.k==='extra');this.send(q.q,'extra')}else if(a.go==='bills')this.setState({breakdown:'bills'});else this.go(a.go)}}});
+    const H=s.horizon;const scrub=Math.min(s.scrub,H);const ch=this.chart(p,H,mobile,cutoff,scrub);
+    const lik=p.exp[scrub],w=p.w(scrub);const rs=lik-w<0?{i:'warning',l:'Could dip below £0',bg:'#F2A900',fg:'#1F1F1F'}:lik<300?{i:'warning-circle',l:'Running low',bg:'#F1EAF7',fg:'#3C1053'}:{i:'check-circle',l:'Looks OK',bg:'#FFFFFF',fg:'#007A4D'};
+    const pots=p.pots.map(x=>{const pct=x.target?Math.min(1,x.amt/x.target):0;const C=144.5;return{name:x.name,amt:gbp(x.amt),of:x.target?'of '+gbp(x.target):'saved',due:x.due,icon:x.target?'calendar-blank':'infinity',
+      pct:x.target?Math.round(pct*100)+'%':'Open',ring:x.target?(pct>=1?'#007A4D':'#5A287D'):'#7B3FA0',dash:x.target?`${(pct*C).toFixed(1)} ${C}`:'3 5'}});
+    // afford
+    const ad=Math.max(0,Math.min(90,s.afford.d)),amt=Math.max(0,+s.afford.amt||0);const v=verdict(p,ad,amt);const vUnknown=missing&&ad+30>cutoff;
+    const VS={ok:{l:'Affordable',i:'check-circle',bg:'#007A4D',fg:'#FFFFFF',head:'#FFFFFF'},tight:{l:'Affordable, but tight',i:'warning',bg:'#F2A900',fg:'#1F1F1F',head:'#FFFFFF'},no:{l:'Not yet',i:'clock',bg:'#5A287D',fg:'#FFFFFF',head:'#F1EAF7'}}[v.st];
+    const it=(s.afford.item||'this').trim()||'this';const itl=it.charAt(0).toLowerCase()+it.slice(1);
+    const vSentence=v.st==='ok'?`Buying ${itl} on ${dS(ad)} still leaves ${gbp(v.after)} at your lowest point, with your pots untouched.`:v.st==='tight'?`You could buy ${itl} on ${dS(ad)}, but it would leave only ${gbp(v.after)} at your lowest point on ${dS(v.lowDay)}. Waiting or skipping it are just as good.`:`Buying ${itl} on ${dS(ad)} would leave you ${gbp(-v.after)} short around ${dS(v.lowDay)}. Waiting or not buying keeps you covered.`;
+    let bReason='';if(v.best){const inc=incomeNear(p,v.best.d);bReason=inc!==null?` That's just after money comes in on ${dS(inc)}.`:''}
+    const vBetter=v.best?(v.st==='no'?`From ${dL(v.best.d)} it fits, leaving ${gbp(v.best.after)} at your lowest point.${bReason}`:`Wait until ${dL(v.best.d)} and keep ${gbp(v.best.after-v.after)} more at your lowest point.${bReason}`):(v.st==='no'?"No date in the next 8 weeks fits without using your pots. A new pot could help you save towards it.":`${dL(ad)} works as well as any date in the next 8 weeks.`);
+    const vOptions=[{icon:'shopping-bag',title:'Buy on '+dS(ad),fig:gbp(v.after),text:'left at your lowest point'},
+      {icon:'hourglass',title:v.best?'Wait until '+dS(v.best.d):'Wait',fig:v.best?gbp(v.best.after):gbp(v.after),text:v.best?'left at your lowest point':'no better date soon'},
+      {icon:'hand-palm',title:"Don't buy it",fig:gbp(v.after+amt),text:'left at your lowest point'}];
+    const vNums=[{l:'Balance today',r:gbp(p.balance)},{l:'Forecast lowest point, 30 days from '+dS(ad),r:gbp(v.low)+' on '+dS(v.lowDay)},{l:'Kept aside in pots',r:'−'+gbp(p.potTotal)},{l:'Purchase',r:'−'+gbp(amt)},{l:'Safe after purchase',r:gbp(v.after)},{l:'Forecast range on '+dS(v.lowDay),r:'±'+gbp(p.w(v.lowDay))}];
+    // transactions
+    const tx=[];let needs=0,wants=0;
+    const groups=p.txns.map(g=>({date:g.date,items:g.items.map(t=>{const lab=s.labels[t[0]]||t[4];const edited=!!s.labels[t[0]]&&s.labels[t[0]]!==t[4];if(lab==='need')needs-=t[3];if(lab==='want')wants-=t[3];
+      return{id:t[0],m:t[1],sub:t[2]+(t[5]?' · '+t[5]:''),icon:ICON[t[2]]||'receipt',amt:(t[3]>0?'+':'−')+'£'+Math.abs(t[3]).toFixed(2),amtColor:t[3]>0?'#007A4D':'#1F1F1F',lab,isIncome:lab==='income',isSpend:lab!=='income',edited,
+       label:lab==='need'?'Need':'Want',chipIcon:lab==='need'?'house':'sparkle',chipBg:lab==='need'?'#FFFFFF':'#F1EAF7',chipBd:lab==='need'?'#5A287D':'#F1EAF7',chipFg:lab==='need'?'#5A287D':'#3C1053',
+       aria:`${t[1]}, labelled ${lab==='need'?'Need':'Want'}. Change label`,toggle:()=>this.setState(st=>({labels:{...st.labels,[t[0]]:lab==='need'?'want':'need'}}))}}).filter(t=>s.filter==='all'||t.lab===s.filter)})).filter(g=>g.items.length);
+    // household
+    const members=[{name:'Maya',initials:'M',avBg:'#F1EAF7',avFg:'#5A287D',work:'Agency work · paid weekly',safe:'£95',rows:[{l:'Next pay',r:'Fri 13 Nov · about £160'},{l:'Pays for',r:'Childcare, phones, food shop'},{l:'Own pot',r:'Christmas · £70'}]},
+      {name:'Dan',initials:'D',avBg:'#5A287D',avFg:'#FFFFFF',work:'Shift work · paid every 2 weeks',safe:'£85',rows:[{l:'Next pay',r:'Tue 10 Nov · about £320'},{l:'Pays for',r:'Energy, council tax, fuel'},{l:'Own pot',r:'Rainy day · £40'}]}];
+    const shared=[{name:'Rent (your share)',split:'Split 50/50',when:'1 Dec',amt:'£420'},{name:'Universal Credit',split:'Joint claim',when:'18 Nov',amt:'+£760'},{name:'School shoes pot',split:'Both add to it',when:'Due 4 Jan',amt:'£40 of £60'}];
+    // tips + bench
+    const bench=p.bench.map(b=>{const M=p.benchMax;const inR=b.you>=b.lo&&b.you<=b.hi;return{label:b.label,you:gbp(b.you),range:gbp(b.lo)+'–'+gbp(b.hi),lo:(b.lo/M*100)+'%',w:((b.hi-b.lo)/M*100)+'%',at:(Math.min(b.you,M)/M*100)+'%',
+      icon:inR?'equals':b.you>b.hi?'arrow-up-right':'arrow-down-right',note:inR?'Within the usual range':b.you>b.hi?`Above the usual range, by ${gbp(b.you-b.hi)} a month`:`Below the usual range, by ${gbp(b.lo-b.you)} a month`}});
+    // chat
+    const msgs=s.msgs.map(m=>({...m,isUser:m.role==='user',isCoach:m.role==='coach',hasNums:!!(m.nums&&m.nums.length),numsOpen:!!s.openNums[m.id],numsIcon:s.openNums[m.id]?'caret-up':'caret-down',
+      nums:(m.nums||[]).map(r=>({l:r[0],r:r[1]})),speaking:s.speaking===m.id,listenIcon:s.speaking===m.id?'stop':'speaker-high',listenLabel:s.speaking===m.id?'Stop':'Listen',
+      toggleNums:()=>this.setState(st=>({openNums:{...st.openNums,[m.id]:!st.openNums[m.id]}})),listen:()=>this.speak(m)}));
+    const chatVisible=mobile?scr==='chat':(s.chatOpen&&!landing);
+    // panel
+    const pk=s.panel;const isWhy=pk==='why',isCalc=pk&&pk.indexOf('calc-')===0;const cc=isCalc?this.calc(pk.slice(5),p,v):null;
+    const mw=minIn(p,p.dipWin[0],p.dipWin[1]);
+    const whyItems=[{icon:'chart-line',title:'Forecast range',text:`Your band starts at ±£${p.band[0]} and widens by about £${p.band[1]} a day, because ${p.bandWhy}. On ${dS(mw.d)} it is ±${gbp(p.w(mw.d))}.`},
+      {icon:'chat-circle-text',title:"Your coach's tone",text:`The coach uses a ${tone} tone with you. You can change it below at any time.`},
+      {icon:'map-pin',title:'Benchmarks for your area',text:`We compare you with ${p.group}, not with everyone.`},
+      {icon:'lightbulb',title:'Relevant tips',text:'We only show tips that fit your situation. Each one says why you are seeing it.'}];
+    const toneHelp={friendly:'Warm and encouraging, with a bit more explanation.',direct:'Short answers. Numbers first.',simple:'Short sentences and everyday words.'}[tone];
+    return {
+      rootH:this.props.embedded?'100%':'100vh',desktop:!mobile,notLanding:!landing,showNav:!mobile&&!landing,showTabs:mobile&&!landing,showCoachBtn:!mobile&&!landing,
+      navItems,tabs,goLanding:()=>this.setState({screen:'landing',menuOpen:false,chatOpen:false}),
+      chatOpen:s.chatOpen,coachBtnBg:s.chatOpen?'#FFFFFF':'transparent',coachBtnFg:s.chatOpen?'#5A287D':'#FFFFFF',toggleChat:()=>this.setState(st=>({chatOpen:!st.chatOpen})),
+      avBg:p.avBg,avFg:p.avFg,pInitials:p.initials,pName:p.name,pDesc:p.desc,menuOpen:s.menuOpen,toggleMenu:()=>this.setState(st=>({menuOpen:!st.menuOpen})),closeMenu:()=>this.setState({menuOpen:false}),menuItems,
+      error,retry:()=>{this.setState({dataState:'loading'});setTimeout(()=>this.setState({dataState:'live'}),1200)},
+      showMain:!(mobile&&scr==='chat'),mainRef:this.mainRef,chatVisible,chatW:mobile?'100%':'380px',chatBorder:mobile?'none':'1px solid #E3DAEB',
+      sLanding:landing,sDash:scr==='dashboard',sAfford:scr==='afford',sActivity:scr==='activity',sHousehold:scr==='household',sTips:scr==='tips',
+      toneSeg,personaCards,
+      bannerLead:p.bannerLead,bannerText:p.banner,openWhy:()=>this.setState({panel:'why'}),greeting:'Good afternoon, '+p.name,
+      loading,notLoading:!loading,safeFmt:gbp(p.safe),safeUntil:dS(30),barSafe:(p.safe/p.balance*100)+'%',barBills:(p.billTotal/p.balance*100)+'%',barPots:(p.potTotal/p.balance*100)+'%',
+      eq,bkOpen:!!bk,bkRows,bkNote,calcSafe:()=>this.setState({panel:'calc-safe'}),alerts:al,alertCount:al.length,
+      horizon:H,horizonSeg:this.seg([[30,'30 days'],[60,'60 days'],[90,'90 days']],H,h=>this.setState(st=>({horizon:h,scrub:Math.min(st.scrub,h)}))),
+      scrub,onScrub:e=>this.setState({scrub:+e.target.value}),readDate:dL(scrub)+(scrub===0?' (today)':''),readMissing:scrub>cutoff,readOk:scrub<=cutoff,
+      readLikely:gbp(lik),readRange:gbp(lik-w)+' to '+gbp(lik+w),rsIcon:rs.i,rsLabel:rs.l,rsBg:rs.bg,rsFg:rs.fg,rsBd:rs.fg,
+      ...ch,missing,cutLabel:dS(cutoff),
+      assumOpen:s.assumOpen,assumIcon:s.assumOpen?'caret-down':'caret-right',assumCount:p.assumptions.length,assumptions:p.assumptions,toggleAssum:()=>this.setState(st=>({assumOpen:!st.assumOpen})),calcForecast:()=>this.setState({panel:'calc-forecast'}),
+      isMaya:!!p.household,noHousehold:!p.household,goHousehold:()=>this.go('household'),tryMaya:()=>this.setPersona('maya'),
+      pots,potsFmt:gbp(p.potTotal),
+      afItem:s.afford.item,afAmt:s.afford.amt,afDate:iso(ad),afDateLabel:dL(ad),minIso:iso(0),maxIso:iso(60),
+      onItem:e=>{const val=e.target.value;this.setState(st=>({afford:{...st.afford,item:val}}))},onAmt:e=>{const val=e.target.value;this.setState(st=>({afford:{...st.afford,amt:val}}))},onDate:e=>{const d=fromIso(e.target.value);this.setState(st=>({afford:{...st.afford,d:Math.max(0,Math.min(60,d))}}))},
+      quickAmts:p.quick.map(q=>({label:'£'+q,onClick:()=>this.setState(st=>({afford:{...st.afford,amt:q}}))})),
+      askCoachAfford:()=>this.send(`Can I afford ${gbp(amt)} for ${itl}?`,'afford',{amt,item:itl}),
+      vUnknown,vKnown:!vUnknown,vHeadBg:VS.head,vChipBg:VS.bg,vChipFg:VS.fg,vIcon:VS.i,vLabel:VS.l,vAfter:gbp(v.after),vLowDay:dS(v.lowDay),vSentence,vBetter,vOptions,vNums,
+      numsOpen:s.numsOpen,numsIcon:s.numsOpen?'caret-down':'caret-right',toggleNums:()=>this.setState(st=>({numsOpen:!st.numsOpen})),calcAfford:()=>this.setState({panel:'calc-afford'}),
+      filterSeg:this.seg([['all','All'],['need','Needs'],['want','Wants'],['income','Income']],s.filter,f=>this.setState({filter:f})),txGroups:groups,noTx:!groups.length,needsFmt:gbp(needs,2),wantsFmt:gbp(wants,2),
+      members,shared,calcHousehold:()=>this.setState({panel:'calc-household'}),
+      tips:p.tips,group:p.group,city:p.city,bench,calcTips:()=>this.setState({panel:'calc-tips'}),calcBench:()=>this.setState({panel:'calc-bench'}),
+      msgs,typing:s.typing,prompts:p.prompts.map(q=>({label:q.q,onClick:()=>this.send(q.q,q.k,q.a)})),draft:s.draft,onDraft:e=>this.setState({draft:e.target.value}),
+      onKey:e=>{if(e.key==='Enter'){e.preventDefault();this.send(s.draft.trim())}},onSend:()=>this.send(s.draft.trim()),closeChat:()=>this.setState({chatOpen:false}),msgRef:this.msgRef,
+      chatBadge:`Coaching ${p.short} · ${tone} tone`,
+      panelOpen:pk&&pk!=='none',isWhy,isCalc:!!isCalc,panelTitle:isWhy?'Why this fits you':cc?cc.title:'',closePanel:()=>this.setState({panel:'none'}),
+      whyItems,toneHelp,tipNames:p.tips.map(t=>t.title),calcSteps:cc?cc.steps:[],calcSources:cc?cc.sources:'',calcUnknown:cc?cc.unknown:'',
+      hasToast:!!s.toast,toast:s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>
