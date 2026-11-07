@@ -178,6 +178,121 @@ def _extract_category_map(normalized: Any) -> dict[str, float]:
     return direct
 
 
+# ---- real `backend.benchmarks.get_benchmark` shape ----------------------------------------------
+# It returns {"region": <cut>, "household_composition": <cut>, ...}; each cut has a "label",
+# "period", "source" and a list of "figures" ({category, app_category, weekly_gbp, monthly_gbp}).
+# The two cuts differ in period and sample, so they are reported side by side, never blended.
+
+def _real_cuts(normalized: Any) -> tuple[dict, dict | None] | None:
+    if not isinstance(normalized, dict):
+        return None
+    region = normalized.get("region")
+    if not (isinstance(region, dict) and isinstance(region.get("figures"), list)):
+        return None
+    comp = normalized.get("household_composition")
+    if not (isinstance(comp, dict) and isinstance(comp.get("figures"), list)):
+        comp = None
+    return region, comp
+
+
+def _cut_figures(cut: dict | None, app_only: bool = False) -> dict[str, dict]:
+    """lowercase category -> figure, keyed by the app category and (unless app_only) the ONS name."""
+    out: dict[str, dict] = {}
+    for fig in (cut or {}).get("figures", []):
+        if not _is_finite_number(fig.get("monthly_gbp")):
+            continue
+        keys = [fig.get("app_category")] + ([] if app_only else [fig.get("category")])
+        for key in keys:
+            if isinstance(key, str) and key.strip():
+                out.setdefault(key.strip().lower(), fig)
+    return out
+
+
+def _cut_summary(cut: dict | None, fig: dict | None) -> dict | None:
+    if not cut or not fig:
+        return None
+    src = fig.get("source") or cut.get("source") or {}
+    return {
+        "label": cut.get("label"),
+        "period": cut.get("period"),
+        "ons_category": fig.get("category"),
+        "weekly_gbp": fig.get("weekly_gbp"),
+        "monthly_gbp": fig.get("monthly_gbp"),
+        "source": f"{src.get('publication', '')}, {src.get('table', '')}".strip(", "),
+    }
+
+
+def _household_note(size: int, source: str) -> str | None:
+    if source == "provided" or size == 1:
+        return None
+    return (
+        f"Household size {size} is the number of household members on file; children are not recorded. "
+        "If the household is different (e.g. two adults and two children is size 4), pass household_size."
+    )
+
+
+def _real_result(
+    region: str, size: int, size_source: str, category: str | None,
+    spend: dict[str, float], cuts: tuple[dict, dict | None],
+) -> dict[str, Any]:
+    reg_cut, comp_cut = cuts
+    base: dict[str, Any] = {
+        "region": region, "household_size": size, "household_size_source": size_source,
+        "framing_note": FRAMING_NOTE,
+        "periods_note": "The regional figure is a 3-year average and the household-type figure is a single "
+                        "year, so they are shown separately and are not directly comparable.",
+    }
+    if (note := _household_note(size, size_source)):
+        base["household_size_note"] = note
+    reg_figs, comp_figs = _cut_figures(reg_cut), _cut_figures(comp_cut)
+    comparable_names = sorted(_cut_figures(reg_cut, app_only=True))
+    numbers: dict[str, float] = {}
+
+    if category is not None:
+        key = category.lower()
+        slug = _slugify(key)
+        user_spend = spend.get(key, 0.0)
+        numbers[f"user_{slug}_spend"] = user_spend
+        reg_fig = reg_figs.get(key)
+        if reg_fig is None:
+            return {**base, "category": category, "comparable": False, "benchmark": None,
+                    "user_spend_30d": user_spend,
+                    "explanation": (f"No comparable regional benchmark for '{category}'. Categories that can "
+                                    f"be compared: {', '.join(comparable_names) or 'none'}."),
+                    "numbers_used": numbers}
+        comp_fig = comp_figs.get(key)
+        numbers[f"benchmark_{slug}"] = float(reg_fig["monthly_gbp"])
+        if comp_fig:
+            numbers[f"benchmark_household_{slug}"] = float(comp_fig["monthly_gbp"])
+        return {**base, "category": category, "comparable": True,
+                "benchmark": {"region": _cut_summary(reg_cut, reg_fig),
+                              "household_type": _cut_summary(comp_cut, comp_fig)},
+                "benchmark_amount": float(reg_fig["monthly_gbp"]),
+                "household_benchmark_amount": float(comp_fig["monthly_gbp"]) if comp_fig else None,
+                "user_spend_30d": user_spend, "numbers_used": numbers}
+
+    comparisons = []
+    for name in comparable_names:
+        slug = _slugify(name)
+        reg_fig, comp_fig = reg_figs[name], comp_figs.get(name)
+        user_spend = spend.get(name, 0.0)
+        numbers[f"benchmark_{slug}"] = float(reg_fig["monthly_gbp"])
+        numbers[f"user_{slug}_spend"] = user_spend
+        if comp_fig:
+            numbers[f"benchmark_household_{slug}"] = float(comp_fig["monthly_gbp"])
+        comparisons.append({
+            "category": name, "ons_category": reg_fig.get("category"),
+            "region_monthly_gbp": float(reg_fig["monthly_gbp"]),
+            "household_type_monthly_gbp": float(comp_fig["monthly_gbp"]) if comp_fig else None,
+            "user_spend_30d": user_spend})
+    for name, value in sorted(spend.items()):  # the user's other spending, for context
+        numbers.setdefault(f"user_{_slugify(name)}_spend", value)
+    return {**base, "comparable": bool(comparisons), "comparisons": comparisons,
+            "region_label": reg_cut.get("label"),
+            "household_type_label": comp_cut.get("label") if comp_cut else None,
+            "user_spend_30d": spend, "numbers_used": numbers}
+
+
 def run_get_benchmark(user_id: str, args: dict[str, Any] | None = None) -> dict[str, Any]:
     """Execute the `get_benchmark` tool for `user_id`."""
     if not user_id or not isinstance(user_id, str):
@@ -197,8 +312,20 @@ def run_get_benchmark(user_id: str, args: dict[str, Any] | None = None) -> dict[
     category: str | None = validated.get("category")
 
     user_spend_by_cat = _compute_user_category_spend(user_id)
-    raw_result = _call_backend_get_benchmark(get_benchmark_fn, region, household_size, category)
+    try:
+        raw_result = _call_backend_get_benchmark(get_benchmark_fn, region, household_size, category)
+    except ValueError as exc:  # e.g. a household size the benchmarks do not cover: answer, don't crash
+        return {
+            "region": region, "household_size": household_size, "comparable": False, "benchmark": None,
+            "user_spend_30d": user_spend_by_cat.get(category.lower(), 0.0) if category else user_spend_by_cat,
+            "explanation": str(exc), "framing_note": FRAMING_NOTE, "numbers_used": {},
+        }
     normalized_benchmark = _normalize_raw_benchmark(raw_result)
+    cuts = _real_cuts(normalized_benchmark)
+    if cuts is not None:
+        size_source = ("provided" if validated.get("household_size") is not None
+                       else "household members" if getattr(user, "household_id", None) else "default (one person)")
+        return _real_result(region, household_size, size_source, category, user_spend_by_cat, cuts)
     category_benchmarks = _extract_category_map(normalized_benchmark)
 
     numbers_used: dict[str, float] = {}
