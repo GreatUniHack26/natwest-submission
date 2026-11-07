@@ -34,7 +34,7 @@ AGENT_NAME = "Nat"
 LLM_MODEL = os.getenv("CONVAI_LLM", "claude-haiku-4-5")
 # Lowest-latency ElevenLabs TTS model. English agents must use a "v2" turbo/flash model
 # (the API rejects eleven_flash_v2_5 for language "en"), so Flash v2 it is.
-TTS_MODEL = os.getenv("CONVAI_TTS_MODEL", "eleven_flash_v2")
+TTS_MODEL = os.getenv("CONVAI_TTS_MODEL", "eleven_v4_turbo")
 LANGUAGE = "en"
 
 CACHE_FILE = Path(os.getenv("CONVAI_CACHE_FILE", str(Path(voice.CACHE_DIR) / "convai_agent.json")))
