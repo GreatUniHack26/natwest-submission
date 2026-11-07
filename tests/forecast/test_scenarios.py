@@ -104,3 +104,32 @@ def test_endpoint_validation_and_errors(ledger,monkeypatch):
     monkeypatch.setattr(config,'MOCK_FORECAST',False)
     monkeypatch.delattr(repository,'get_balance')
     assert client.post('/users/sam/forecast/what-if',json={}).status_code == 503
+
+
+@pytest.mark.parametrize('overrides',[False,[],42,'invalid'])
+def test_invalid_override_container_is_not_silently_replaced(ledger,overrides):
+    with pytest.raises(ValueError,match='object'): forecast.forecast('sam',35,overrides)
+
+
+@pytest.mark.skipif(not hasattr(repository,'get_balance'),reason='Real balance interface awaits P1 approval in #55')
+def test_actual_sqlite_scenario_endpoint_without_financial_mocks(monkeypatch,tmp_path):
+    from contracts.schemas import Transaction,User
+    monkeypatch.setattr(config,'MOCK_DATA',False)
+    monkeypatch.setattr(config,'MOCK_FORECAST',False)
+    monkeypatch.setattr(config,'DB_PATH',str(tmp_path/'scenario.db'))
+    monkeypatch.setattr(config,'TODAY',TODAY)
+    user = User(id='sam',name='Sam',persona='controlled',region='Manchester')
+    rows = [Transaction(id='anchor',user_id='sam',date='2026-09-01',merchant='Opening balance',amount=130,category='income',kind='income')]
+    rows += txs(['2026-10-18','2026-10-25','2026-11-01'],[-30]*3)
+    rows += txs(['2026-10-19','2026-10-26','2026-11-02'],[20]*3,merchant='Pay')
+    repository.save_persona(user,rows,[])
+    assert repository.get_balance('sam',TODAY) == 100  # 130 - 3*30 + 3*20
+    client = TestClient(app)
+    baseline = client.get('/users/sam/forecast?days=35')
+    scenario = client.post('/users/sam/forecast/what-if',json={'days':35,'overrides':{'income_multiplier':.5,'extra_monthly_cost':15,'extra_one_off':7}})
+    assert baseline.status_code == scenario.status_code == 200
+    assert baseline.json()['points'][-1]['expected'] == 50
+    assert scenario.json()['points'][-1]['expected'] == -22
+    assert Forecast.model_validate(scenario.json()).risk_events
+    assert repository.get_balance('sam',TODAY) == 100  # scenario never writes historical data
+    assert client.post('/users/unknown/forecast/what-if',json={}).status_code == 404

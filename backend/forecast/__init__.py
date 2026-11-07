@@ -21,7 +21,7 @@ def forecast(user_id: str, horizon_days: int = 90, overrides: Optional[dict] = N
         return Forecast(**mock.load("forecast"))
     from .engine import build_forecast
 
-    return build_forecast(user_id, horizon_days, overrides or {})
+    return build_forecast(user_id, horizon_days, overrides if overrides is not None else {})
 
 
 def safe_to_spend(user_id: str, as_of: dt.date) -> SafeToSpend:
