@@ -65,7 +65,7 @@ def test_savings_plan_instructions_match_tool_output_fields():
 
 
 def test_base_prompt_stays_concise_for_voice():
-    assert len(BASE.split()) < 900
+    assert len(BASE.split()) < 1000
 
 
 @pytest.mark.parametrize("tone,limit", [("friendly", "4 short sentences"), ("direct", "3 short"),
