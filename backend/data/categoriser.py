@@ -67,6 +67,17 @@ RULES: dict[str, tuple[str, str]] = {
     "puregym": ("fitness", "want"),
     "uniqlo": ("clothing", "want"),
     "primark": ("clothing", "want"),
+    # Pete's student history (offline seeding, even without a label cache).
+    "students union social": ("entertainment", "want"),
+    "boots toiletries": ("health", "need"),
+    "boots prescription": ("health", "need"),
+    "university printing": ("education", "need"),
+    "northern train home": ("transport", "need"),
+    "vue student cinema": ("entertainment", "want"),
+    "blackwells course books": ("education", "need"),
+    "laptop repair": ("education", "need"),
+    "ikea room essentials": ("household", "need"),
+    "university society membership": ("entertainment", "want"),
 }
 _PATTERNS = [
     (re.compile(rf"(?<![a-z0-9]){re.escape(k)}(?![a-z0-9])"), v) for k, v in RULES.items()

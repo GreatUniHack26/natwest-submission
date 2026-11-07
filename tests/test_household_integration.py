@@ -20,7 +20,7 @@ def seeded(tmp_path, monkeypatch):
 
 def test_seed_covers_every_persona(seeded):
     _, counts = seeded
-    assert set(counts) == {"sam", "alex", "maya", "dan"}
+    assert set(counts) == {"sam", "alex", "maya", "dan", "pete"}
 
 
 def test_both_household_members_load_via_repository(seeded):
@@ -47,7 +47,7 @@ def test_salaried_round_trips(seeded):
 
 def test_api_serves_every_member(seeded):
     client, _ = seeded
-    for uid in ("maya", "dan", "alex", "sam"):
+    for uid in ("maya", "dan", "alex", "sam", "pete"):
         assert schemas.User(**client.get(f"/users/{uid}").json()).id == uid
         rows = [schemas.Transaction(**t) for t in client.get(f"/users/{uid}/transactions").json()]
         assert rows and all(t.user_id == uid for t in rows)

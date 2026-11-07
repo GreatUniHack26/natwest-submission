@@ -71,9 +71,11 @@ def generate_persona(name: str, seed: int = 42) -> tuple[User, list[Transaction]
         return _sam(seed)
     if name == "salaried":
         return _salaried(seed)
+    if name == "pete":
+        return _pete(seed)
     if name in HOUSEHOLDS:
         raise ValueError(f"{name!r} has several members: use generate_household({name!r}, seed)")
-    raise ValueError(f"Unknown persona {name!r} (available: 'sam', 'salaried')")
+    raise ValueError(f"Unknown persona {name!r} (available: 'sam', 'salaried', 'pete')")
 
 
 def generate_household(
@@ -83,6 +85,93 @@ def generate_household(
     if name == "family":
         return _family(seed)
     raise ValueError(f"Unknown household {name!r} (available: 'family')")
+
+
+def _pete(seed: int) -> tuple[User, list[Transaction], list[Pot]]:
+    """A year of student life; real transactions drive every demo calculation."""
+    rng = random.Random(seed)
+    today = config.TODAY
+    start = _months_ago(today, 12)
+    user = User(
+        id="pete", name="Pete", region="Manchester", tone="friendly",
+        persona="Full-time university student with a part-time cafe job and termly maintenance payments",
+    )
+    monthly = {
+        1: ("Manchester Student Lettings (rent)", 625.00, "housing", "need"),
+        3: ("Spotify Student", 5.99, "subscriptions", "want"),
+        8: ("PureGym", 19.99, "fitness", "want"),
+        12: ("Giffgaff", 12.00, "bills", "need"),
+        15: ("Octopus Energy", 48.00, "bills", "need"),
+        18: ("Zen Internet", 10.00, "bills", "need"),
+        22: ("Netflix", 5.99, "subscriptions", "want"),
+    }
+    rows: list[_Row] = []
+    day = start
+    spike_start = today - dt.timedelta(days=6)
+    while day <= today:
+        if day.day in monthly:
+            merchant, amount, category, kind = monthly[day.day]
+            rows.append((day, merchant, -amount, category, kind))
+        if day.day == 20:
+            rows.append((day, "Family monthly support", 175.00, "income", "income"))
+        # Termly payments are history, not a promise of monthly future income.
+        if (day.month, day.day) in {(1, 12), (4, 20), (9, 21)}:
+            rows.append((day, "Student Finance maintenance", 1800.00, "income", "income"))
+        if day.weekday() == 4:
+            # More shifts in summer; smaller, variable receipts during term.
+            hours = rng.choice((14, 16, 18)) if day.month in (7, 8) else rng.choice((8, 10, 12))
+            rows.append((day, "Campus Cafe weekly wages", round(hours * 12.50, 2), "income", "income"))
+        if day.weekday() in (0, 3):
+            rows.append((day, rng.choice(("Aldi", "Lidl", "Tesco")), _spend(rng, 14, 25), "groceries", "need"))
+        if day.weekday() in (0, 1, 3):
+            rows.append((day, "First Bus student commute", -2.00, "transport", "need"))
+            rows.append((day, "Greggs campus lunch", _spend(rng, 3, 5), "eating out", "want"))
+        if day.weekday() == 4 and day < spike_start:
+            rows.append((day, "Deliveroo", _spend(rng, 12, 18), "eating out", "want"))
+        if day.weekday() == 5:
+            rows.append((day, "Students Union social", _spend(rng, 8, 18), "entertainment", "want"))
+        if day.day == 9:
+            rows.append((day, "Boots toiletries", _spend(rng, 6, 14), "health", "need"))
+        if day.day == 16:
+            rows.append((day, "University printing", _spend(rng, 2, 6), "education", "need"))
+        if day.day == 24:
+            rows.append((day, "Northern train home", _spend(rng, 16, 28), "transport", "need"))
+        if day.day == 25 and day.month % 2 == 0:
+            rows.append((day, "Primark", _spend(rng, 18, 38), "clothing", "want"))
+        if day.day == 27 and day.month % 2 == 1:
+            rows.append((day, "Vue student cinema", -7.99, "entertainment", "want"))
+        if day.month in (1, 9) and day.day == 28:
+            rows.append((day, "Blackwells course books", -64.00, "education", "need"))
+        day += dt.timedelta(days=1)
+
+    # Recognisable one-offs make date/category searches and follow-ups useful.
+    for days_ago, merchant, amount, category, kind in (
+        (150, "Laptop repair", 89.00, "education", "need"),
+        (65, "IKEA room essentials", 47.50, "household", "need"),
+        (40, "University society membership", 25.00, "entertainment", "want"),
+        (22, "Uniqlo winter jacket", 59.90, "clothing", "want"),
+        (12, "Boots prescription", 9.90, "health", "need"),
+    ):
+        rows.append((today - dt.timedelta(days=days_ago), merchant, -amount, category, kind))
+
+    prior_weekly = _eating_out(rows, spike_start - dt.timedelta(days=28), spike_start - dt.timedelta(days=1)) / 4
+    extra = round(prior_weekly * 2.2 - _eating_out(rows, spike_start, today), 2)
+    if extra <= 0:
+        raise ValueError(f"seed {seed}: Pete's eating-out spike cannot be planted")
+    first = round(extra * 0.55, 2)
+    rows.extend([
+        (today - dt.timedelta(days=2), "Deliveroo", -first, "eating out", "want"),
+        (today, "Dominos study night", -round(extra - first, 2), "eating out", "want"),
+    ])
+    next_month = _months_ago(today.replace(day=1), -1)
+    pots = [
+        # Exact merchant/date matching lets the engine pay rent from this pot once.
+        Pot(id="pete-p1", user_id="pete", name="Manchester Student Lettings (rent)", amount=625, due_date=next_month),
+        Pot(id="pete-p2", user_id="pete", name="Emergency fund", amount=350),
+        Pot(id="pete-p3", user_id="pete", name="Laptop replacement", amount=200, due_date=today + dt.timedelta(days=180)),
+        Pot(id="pete-p4", user_id="pete", name="Train home and gifts", amount=150, due_date=today + dt.timedelta(days=42)),
+    ]
+    return user, _build(user, rows, start, 1750.00, seed), pots
 
 
 def _months_ago(d: dt.date, months: int) -> dt.date:

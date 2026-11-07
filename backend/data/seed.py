@@ -8,7 +8,7 @@ from backend.data.categoriser import categorise
 from backend.data.generator import generate_household, generate_persona
 from backend.data.repository import save_persona
 
-PERSONAS = ["sam", "salaried"]  # single-user personas
+PERSONAS = ["sam", "salaried", "pete"]  # single-user personas
 HOUSEHOLDS = ["family"]  # multi-user personas
 
 
