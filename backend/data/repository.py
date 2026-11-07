@@ -72,6 +72,17 @@ def get_user(user_id: str) -> User:
     return User(**dict(row))
 
 
+def get_household_members(household_id: str) -> list[User]:
+    """All users sharing `household_id`, ordered by id. Unknown household -> []."""
+    if config.MOCK_DATA:
+        return []  # fixtures have no households
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM users WHERE household_id = ? ORDER BY id", (household_id,)
+        ).fetchall()
+    return [User(**dict(r)) for r in rows]
+
+
 def get_transactions(
     user_id: str, start: Optional[dt.date] = None, end: Optional[dt.date] = None
 ) -> list[Transaction]:

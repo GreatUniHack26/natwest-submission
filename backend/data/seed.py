@@ -3,17 +3,22 @@
 Persists via repository.save_persona (the only code allowed to touch the DB).
 """
 from backend import config
-from backend.data.generator import generate_persona
+from backend.data.generator import generate_household, generate_persona
 from backend.data.repository import save_persona
 
-PERSONAS = ["sam"]  # add 'family' / 'salaried' as they land (issue #4)
+PERSONAS = ["sam", "salaried"]  # single-user personas
+HOUSEHOLDS = ["family"]  # multi-user personas
 
 
-def seed(personas: list[str] = PERSONAS, seed_value: int = 42) -> dict[str, int]:
-    """Generate and store each persona, replacing any existing rows. Returns tx counts."""
+def seed(
+    personas: list[str] = PERSONAS, households: list[str] = HOUSEHOLDS, seed_value: int = 42
+) -> dict[str, int]:
+    """Generate and store everyone, replacing existing rows. Returns {user_id: tx count}."""
+    members = [generate_persona(name, seed_value) for name in personas]
+    for name in households:
+        members += generate_household(name, seed_value)
     counts = {}
-    for name in personas:
-        user, txs, pots = generate_persona(name, seed_value)
+    for user, txs, pots in members:
         save_persona(user, txs, pots)
         counts[user.id] = len(txs)
     return counts

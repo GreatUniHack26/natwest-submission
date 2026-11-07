@@ -18,7 +18,14 @@ Balance note: the Transaction contract has no balance field, so balance = sum of
 transactions. A single 'Opening balance' income row on day one makes the total exact.
 Consumers detecting recurring income must ignore merchant == OPENING_BALANCE_MERCHANT.
 
-Personas still to add (issue #4): 'family' (household_id='h1'), optional 'salaried'.
+Issue #4 personas:
+  'salaried' (generate_persona): fixed monthly salary on the 28th, comfortable margin; the
+    contrast case for "recurring income is detectable".
+  'family' (generate_household): two adults in household 'h1', each with their own
+    transactions and balance. All shared pots are owned by the first adult (one record per
+    pot, so household aggregation never double-counts). PLANTED risk: the second adult's
+    agency hours are cut ~30 days before TODAY, so recent income no longer covers essentials,
+    and December rent plus school costs are protected in pots.
 """
 import calendar
 import datetime as dt
@@ -28,6 +35,7 @@ from backend import config
 from contracts.schemas import Pot, Transaction, User
 
 OPENING_BALANCE_MERCHANT = "Opening balance"
+HOUSEHOLDS = ("family",)
 
 HISTORY_MONTHS = 6
 RENT = 950.00
@@ -51,9 +59,23 @@ _Row = tuple[dt.date, str, float, str, str]
 
 
 def generate_persona(name: str, seed: int = 42) -> tuple[User, list[Transaction], list[Pot]]:
+    """Single-user personas. Multi-user households: see generate_household."""
     if name == "sam":
         return _sam(seed)
-    raise ValueError(f"Unknown persona {name!r} (available: 'sam')")
+    if name == "salaried":
+        return _salaried(seed)
+    if name in HOUSEHOLDS:
+        raise ValueError(f"{name!r} has several members: use generate_household({name!r}, seed)")
+    raise ValueError(f"Unknown persona {name!r} (available: 'sam', 'salaried')")
+
+
+def generate_household(
+    name: str, seed: int = 42
+) -> list[tuple[User, list[Transaction], list[Pot]]]:
+    """Multi-user personas: one (User, transactions, pots) per member, same household_id."""
+    if name == "family":
+        return _family(seed)
+    raise ValueError(f"Unknown household {name!r} (available: 'family')")
 
 
 def _months_ago(d: dt.date, months: int) -> dt.date:
@@ -147,3 +169,173 @@ def _sam(seed: int) -> tuple[User, list[Transaction], list[Pot]]:
         Pot(id="sam-p2", user_id=user.id, name="Emergency fund", amount=300.00, due_date=None),
     ]
     return user, transactions, pots
+
+
+# ---- shared helpers for the issue #4 personas ---------------------------------------
+
+def _build(
+    user: User, rows: list[_Row], start: dt.date, target_balance: float, seed: int
+) -> list[Transaction]:
+    """Prepend an opening balance so sum(transactions) == target_balance, then number the rows."""
+    opening = round(target_balance - sum(r[2] for r in rows), 2)
+    if opening <= 0:
+        raise ValueError(f"seed {seed}: {user.id} would need a non-positive opening balance")
+    rows = [(start, OPENING_BALANCE_MERCHANT, opening, "income", "income")] + rows
+    rows.sort(key=lambda r: r[0])  # stable: opening first, same-day order = generation order
+    return [
+        Transaction(
+            id=f"{user.id}-t{i:04d}", user_id=user.id, date=d, merchant=m,
+            amount=round(a, 2), category=c, kind=k,
+        )
+        for i, (d, m, a, c, k) in enumerate(rows, start=1)
+    ]
+
+
+def _spend(rng: random.Random, lo: float, hi: float) -> float:
+    return -round(rng.uniform(lo, hi), 2)
+
+
+# ---- 'salaried': fixed monthly income -----------------------------------------------
+
+SALARY = 2350.00
+SALARY_DAY = 28
+SALARIED_TARGET_BALANCE = 5200.00
+
+
+def _salaried(seed: int) -> tuple[User, list[Transaction], list[Pot]]:
+    rng = random.Random(seed)
+    today = config.TODAY
+    start = _months_ago(today, HISTORY_MONTHS)
+    user = User(
+        id="alex", name="Alex", persona="Salaried office worker, fixed monthly income",
+        region="Bristol", household_id=None, tone="direct",
+    )
+    monthly = {  # day of month -> (merchant, £, category, kind)
+        1: ("Bristol Lettings (rent)", 950.00, "housing", "need"),
+        5: ("PureGym", 24.99, "fitness", "want"),
+        8: ("Spotify", 11.99, "subscriptions", "want"),
+        10: ("EE", 22.00, "bills", "need"),
+        15: ("Bristol City Council", 138.00, "bills", "need"),
+        18: ("Octopus Energy", 78.00, "bills", "need"),
+        22: ("Zen Internet", 29.99, "bills", "need"),
+    }
+    rows: list[_Row] = []
+    day = start
+    while day <= today:
+        if day.day == SALARY_DAY:
+            rows.append((day, "Meridian Ltd (salary)", SALARY, "income", "income"))
+        if day.day in monthly:
+            m, amount, c, k = monthly[day.day]
+            rows.append((day, m, -amount, c, k))
+        if rng.random() < 0.30:
+            rows.append((day, rng.choice(["Sainsbury's", "Waitrose"]), _spend(rng, 25, 70), "groceries", "need"))
+        if day.weekday() < 5:
+            if rng.random() < 0.5:
+                rows.append((day, "First Bus", _spend(rng, 2.8, 5.6), "transport", "need"))
+            if rng.random() < 0.25:
+                rows.append((day, rng.choice(["Pret", "Nando's"]), _spend(rng, 7, 28), "eating out", "want"))
+        if rng.random() < 0.03:
+            rows.append((day, "Uniqlo", _spend(rng, 30, 80), "clothing", "want"))
+        day += dt.timedelta(days=1)
+
+    pots = [
+        Pot(id="alex-p1", user_id=user.id, name="Holiday", amount=600.00, due_date=dt.date(2027, 5, 1)),
+        Pot(id="alex-p2", user_id=user.id, name="Emergency fund", amount=1500.00, due_date=None),
+    ]
+    return user, _build(user, rows, start, SALARIED_TARGET_BALANCE, seed), pots
+
+
+# ---- 'family': two adults, two children, household h1 -------------------------------
+
+FAMILY_HOUSEHOLD_ID = "h1"
+PAY_CUT_DAYS_AGO = 30  # the second adult's hours are cut this long before TODAY
+CHILD_BENEFIT = 173.20  # 4-weekly, two children
+CHILD_BENEFIT_GAP_DAYS = 28
+FAMILY_TARGET_BALANCES = {"maya": 1200.00, "dan": 220.00}
+FAMILY_POTS = [  # one record per shared pot, owned by the first adult
+    ("December rent", 725.00, dt.date(2026, 12, 1)),
+    ("School trip and uniform", 90.00, dt.date(2026, 12, 10)),
+    ("Emergency fund", 60.00, None),
+]
+
+
+def _family(seed: int) -> list[tuple[User, list[Transaction], list[Pot]]]:
+    rng = random.Random(seed)
+    today = config.TODAY
+    start = _months_ago(today, HISTORY_MONTHS)
+    cut = today - dt.timedelta(days=PAY_CUT_DAYS_AGO)
+    maya = User(
+        id="maya", name="Maya", persona="Parent in a low-income household, part-time care shifts",
+        region="Leeds", household_id=FAMILY_HOUSEHOLD_ID, tone="simple",
+    )
+    dan = User(
+        id="dan", name="Dan", persona="Parent in a low-income household, agency warehouse work",
+        region="Leeds", household_id=FAMILY_HOUSEHOLD_ID, tone="simple",
+    )
+    m: list[_Row] = []  # Maya: childcare, loan, council tax, food, school, benefit, care shifts
+    d: list[_Row] = []  # Dan: rent, energy, fuel, agency pay (cut ~30 days ago)
+
+    next_maya = start + dt.timedelta(days=rng.randint(1, 3))
+    next_dan = start + dt.timedelta(days=rng.randint(1, 3))
+    next_benefit = start + dt.timedelta(days=rng.randint(0, 6))
+    day = start
+    while day <= today:
+        # Fixed monthly bills
+        if day.day == 1:
+            d.append((day, "Leeds Homes (rent)", -725.00, "housing", "need"))
+        if day.day == 3:
+            m.append((day, "Disney+", -4.99, "subscriptions", "want"))
+        if day.day == 5:
+            m.append((day, "Little Stars Club", -180.00, "childcare", "need"))
+        if day.day == 10:
+            m.append((day, "Provident Loan", -85.00, "debt", "need"))
+        if day.day == 12:
+            m.append((day, "Giffgaff", -12.00, "bills", "need"))
+            d.append((day, "Lebara", -12.00, "bills", "need"))
+        if day.day == 15:
+            d.append((day, "British Gas", -95.00, "bills", "need"))
+        if day.day == 20:
+            m.append((day, "Leeds City Council", -112.00, "bills", "need"))
+
+        # Variable spending
+        if rng.random() < 0.26:
+            m.append((day, rng.choice(["Aldi", "Tesco"]), _spend(rng, 28, 62), "groceries", "need"))
+        if rng.random() < 0.10:
+            d.append((day, "Lidl", _spend(rng, 9, 22), "groceries", "need"))
+        if day.weekday() == 4 and rng.random() < 0.5:
+            m.append((day, "Ark Primary School", _spend(rng, 8, 25), "school", "need"))
+        if rng.random() < 0.12:
+            d.append((day, "Shell", _spend(rng, 20, 40), "transport", "need"))
+        if rng.random() < 0.06:
+            m.append((day, "Dominos", _spend(rng, 14, 24), "eating out", "want"))
+        if rng.random() < 0.04:
+            m.append((day, "Primark", _spend(rng, 15, 45), "clothing", "want"))
+
+        # Income
+        if day == next_benefit:
+            m.append((day, "Child Benefit", CHILD_BENEFIT, "income", "income"))
+            next_benefit = day + dt.timedelta(days=CHILD_BENEFIT_GAP_DAYS)
+        if day == next_maya:
+            m.append((day, "Care home shifts", float(rng.randint(110, 210)), "income", "income"))
+            next_maya = day + dt.timedelta(days=rng.randint(6, 8))
+        if day == next_dan:
+            if day < cut:
+                d.append((day, "Agency work pay", float(rng.randint(130, 290)), "income", "income"))
+                next_dan = day + dt.timedelta(days=rng.randint(5, 9))
+            else:  # PLANTED: hours cut -> fewer, smaller payments
+                d.append((day, "Agency work pay", float(rng.randint(70, 130)), "income", "income"))
+                next_dan = day + dt.timedelta(days=rng.randint(12, 18))
+        day += dt.timedelta(days=1)
+
+    # Guarantee data reaches TODAY for both members (consumers anchor on the last transaction)
+    m.append((today, "Aldi", _spend(rng, 18, 30), "groceries", "need"))
+    d.append((today, "Shell", _spend(rng, 15, 25), "transport", "need"))
+
+    pots = [
+        Pot(id=f"{maya.id}-p{i}", user_id=maya.id, name=n, amount=a, due_date=due)
+        for i, (n, a, due) in enumerate(FAMILY_POTS, start=1)
+    ]
+    return [
+        (maya, _build(maya, m, start, FAMILY_TARGET_BALANCES[maya.id], seed), pots),
+        (dan, _build(dan, d, start, FAMILY_TARGET_BALANCES[dan.id], seed), []),
+    ]
