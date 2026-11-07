@@ -303,3 +303,20 @@ a.row:focus-visible, button.row:focus-visible { outline-offset: -3px; border-rad
 #forecast-preview .spending-link { display: none; }
 .tt-chance[data-level="high"]::before { content: none; }
 .tt-amount { font-size: 2.25rem; font-weight: 700; }
+
+/* Desktop header: nav sits directly on the purple bar, no white strip */
+@media (min-width: 44.0625rem) {
+  .app-header .section-nav {
+    background: transparent !important; box-shadow: none !important; border: 0 !important;
+    backdrop-filter: none !important; padding: 0;
+  }
+  .app-header .section-nav a, .app-header .section-nav button {
+    background: transparent; color: #FFFFFF; opacity: 0.82; border-radius: 999px;
+  }
+  .app-header .section-nav a:hover, .app-header .section-nav button:hover { opacity: 1; background: rgb(255 255 255 / 12%); }
+  .app-header .section-nav a[aria-current="location"], .app-header .section-nav button[aria-current="location"] {
+    opacity: 1; background: #FFFFFF; color: var(--c-deep);
+  }
+  .app-header .section-nav a::before, .app-header .section-nav a::after { display: none; }
+  .nat-fab::after { display: none; }
+}
