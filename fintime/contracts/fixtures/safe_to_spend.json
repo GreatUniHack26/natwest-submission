@@ -1,0 +1,11 @@
+{
+  "balance": 1640.00,
+  "pots_total": 1250.00,
+  "upcoming_bills": 180.00,
+  "safe_amount": 210.00,
+  "breakdown": [
+    {"label": "Account balance", "amount": 1640.00},
+    {"label": "Set aside in pots", "amount": -1250.00},
+    {"label": "Bills due before next income", "amount": -180.00}
+  ]
+}

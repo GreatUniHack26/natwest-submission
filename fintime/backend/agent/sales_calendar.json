@@ -1,0 +1,6 @@
+[
+  {"name": "Black Friday", "date": "2026-11-27", "categories": ["clothing", "electronics", "general"]},
+  {"name": "Cyber Monday", "date": "2026-11-30", "categories": ["electronics", "general"]},
+  {"name": "Boxing Day sales", "date": "2026-12-26", "categories": ["clothing", "electronics", "general"]},
+  {"name": "January sales", "date": "2027-01-02", "categories": ["clothing", "general"]}
+]

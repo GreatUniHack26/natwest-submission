@@ -1,0 +1,23 @@
+{
+  "user_id": "sam",
+  "horizon_days": 56,
+  "points": [
+    {"date": "2026-11-07", "low": 1640, "expected": 1640, "high": 1640},
+    {"date": "2026-11-14", "low": 1500, "expected": 1560, "high": 1600},
+    {"date": "2026-11-21", "low": 1380, "expected": 1480, "high": 1560},
+    {"date": "2026-11-28", "low": 1250, "expected": 1390, "high": 1500},
+    {"date": "2026-12-05", "low": 1100, "expected": 1260, "high": 1420},
+    {"date": "2026-12-12", "low": 600, "expected": 780, "high": 950},
+    {"date": "2026-12-19", "low": 120, "expected": 320, "high": 520},
+    {"date": "2026-12-26", "low": -80, "expected": 180, "high": 420},
+    {"date": "2027-01-02", "low": -150, "expected": 60, "high": 380}
+  ],
+  "risk_events": [
+    {"date": "2026-12-26", "reason": "Balance may go negative before your January income arrives.", "severity": "high"}
+  ],
+  "assumptions": [
+    "Rent and phone bill repeat monthly (detected from 6 months of history).",
+    "Everyday spending follows your usual weekday pattern.",
+    "Income follows your average shift pay, which varies month to month."
+  ]
+}

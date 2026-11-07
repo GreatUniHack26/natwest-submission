@@ -1,0 +1,4 @@
+[
+  {"id": "a1", "type": "sudden_change", "category": "eating out", "message": "You spent 60% more on eating out this week than your 4-week average.", "suggested_action": "Cap eating out at £25 for the next 7 days to stay on track.", "severity": "medium"},
+  {"id": "a2", "type": "risk", "category": null, "message": "Your balance may go negative around 26 Dec, before January income arrives.", "suggested_action": "Pick up one extra shift in December or pause one want-spend category.", "severity": "high"}
+]
