@@ -150,6 +150,32 @@ def _extract_category_map(normalized: Any) -> dict[str, float]:
     if not isinstance(normalized, dict):
         return {}
 
+    # Support P1's Benchmark schema: {"region": {"figures": [...]}, "household_composition": {"figures": [...]}}
+    figures_extracted: dict[str, float] = {}
+    for cut_key in ("household_composition", "region"):
+        cut = normalized.get(cut_key)
+        if isinstance(cut, dict) and isinstance(cut.get("figures"), list):
+            for fig in cut["figures"]:
+                if not isinstance(fig, dict):
+                    continue
+                val = fig.get("monthly_gbp")
+                if not _is_finite_number(val):
+                    val = fig.get("weekly_gbp")
+                if not _is_finite_number(val):
+                    continue
+                rounded_val = round(float(val), 2)
+                app_cat = fig.get("app_category")
+                if isinstance(app_cat, str) and app_cat.strip():
+                    figures_extracted[app_cat.strip().lower()] = rounded_val
+                cat_label = fig.get("category")
+                if isinstance(cat_label, str) and cat_label.strip():
+                    label_lower = cat_label.strip().lower()
+                    figures_extracted[label_lower] = rounded_val
+                    if "restaurants" in label_lower:
+                        figures_extracted.setdefault("eating out", rounded_val)
+    if figures_extracted:
+        return figures_extracted
+
     for container_key in ("categories", "spending", "benchmarks", "by_category"):
         sub = normalized.get(container_key)
         if isinstance(sub, dict):
