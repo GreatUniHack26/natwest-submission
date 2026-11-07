@@ -417,3 +417,111 @@ def test_mock_agent_and_mock_forecast_compatibility(monkeypatch):
     assert live_reply.numbers_used["safe_amount"] == 210.0
     assert live_reply.numbers_used["balance"] == 1640.0
 
+
+def test_get_tips_tool_integration_in_orchestrator(monkeypatch):
+    """get_tips tool executes via tools.run_tool and merges est_saving into ChatReply.numbers_used."""
+    monkeypatch.setattr(config, "MOCK_DATA", True)
+
+    responses = iter(
+        [
+            {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "toolu_tips",
+                        "name": "get_tips",
+                        "input": {},
+                    }
+                ]
+            },
+            {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            "As a student with transport and rent spend, you may want to check the "
+                            "16-25 Railcard (estimated £3.07 saving on your recent travel) and "
+                            "Council Tax student exemptions on GOV.UK. General information, not financial or tax advice."
+                        ),
+                    }
+                ]
+            },
+        ]
+    )
+    monkeypatch.setattr(orchestrator, "call_llm", lambda **kwargs: next(responses))
+
+    reply = orchestrator.run_chat("sam", "Do you have any savings tips?", tone="friendly")
+    assert "tip_railcard_16_25_est_saving" in reply.numbers_used
+    assert reply.numbers_used["tip_railcard_16_25_est_saving"] == 3.07
+    assert "GOV.UK" in reply.text
+
+
+def test_get_benchmark_tool_integration_in_orchestrator(monkeypatch):
+    """When backend.benchmarks is available, get_benchmark is exposed and merges numbers_used."""
+    import sys
+    import types
+
+    monkeypatch.setattr(config, "MOCK_DATA", True)
+
+    fake_benchmarks = types.ModuleType("backend.benchmarks")
+    fake_benchmarks.get_benchmark = lambda region, household_size: {  # type: ignore[attr-defined]
+        "region": region,
+        "household_size": household_size,
+        "categories": {"eating out": 95.0, "groceries": 180.0},
+        "source": "ONS Family Spending",
+    }
+    monkeypatch.setitem(sys.modules, "backend.benchmarks", fake_benchmarks)
+
+    active_names = [t["name"] for t in tools.get_active_tools()]
+    assert "get_benchmark" in active_names
+
+    responses = iter(
+        [
+            {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "toolu_bench",
+                        "name": "get_benchmark",
+                        "input": {"category": "eating out", "household_size": 1},
+                    }
+                ]
+            },
+            {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            "For a 1-person household in Manchester, the ONS benchmark for eating out is £95, "
+                            "compared with your £23.70 spend over the last 30 days."
+                        ),
+                    }
+                ]
+            },
+        ]
+    )
+    monkeypatch.setattr(orchestrator, "call_llm", lambda **kwargs: next(responses))
+
+    reply = orchestrator.run_chat("sam", "Am I spending more than similar households on eating out?", tone="friendly")
+    assert reply.numbers_used["benchmark_eating_out"] == 95.0
+    assert reply.numbers_used["user_eating_out_spend"] == 23.7
+
+
+def test_offline_connect_error_and_demo_mode_fallback_in_orchestrator(monkeypatch):
+    """When network fails with ConnectError or DEMO_MODE=1 is set, run_chat serves deterministic fallback."""
+    monkeypatch.setattr(config, "MOCK_FORECAST", True)
+
+    def offline_call_llm(**kwargs):
+        raise httpx.ConnectError("Network is unreachable")
+
+    monkeypatch.setattr(orchestrator, "call_llm", offline_call_llm)
+
+    reply = orchestrator.run_chat("sam", "Can I afford a £30 shirt?", tone="friendly")
+    assert reply.numbers_used["price"] == 30.0
+    assert reply.numbers_used["safe_to_spend"] == 210.0
+    assert reply.numbers_used["safe_after"] == 180.0
+    assert "£30" in reply.text
+    assert "£210" in reply.text
+    assert "£180" in reply.text
+
+

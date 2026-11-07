@@ -17,7 +17,7 @@ from typing import Any, Optional
 import httpx
 
 from backend import config, data
-from backend.agent import tools, voice
+from backend.agent import fallback, tools, voice
 from contracts.schemas import ChatReply, Tone
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
@@ -74,6 +74,14 @@ def build_system_prompt(tone: Tone) -> str:
 def extract_numbers_used(result: Any) -> dict[str, float]:
     """Extract verified financial numbers from a successful tool result without doing maths."""
     extracted: dict[str, float] = {}
+    if isinstance(result, list):
+        for item in result:
+            if isinstance(item, dict) and "id" in item and "est_saving" in item:
+                val = item["est_saving"]
+                if isinstance(val, (int, float)) and not isinstance(val, bool) and math.isfinite(val):
+                    extracted[f"tip_{item['id']}_est_saving"] = float(val)
+        return extracted
+
     if not isinstance(result, dict):
         return extracted
 
@@ -203,8 +211,19 @@ def _build_reply(text: str, numbers_used: dict[str, float]) -> ChatReply:
 
 def run_chat(user_id: str, message: str, tone: Optional[Tone] = None) -> ChatReply:
     resolved_tone = resolve_tone(user_id, tone)
+
+    # In explicit DEMO_MODE, serve snapshot-verified cached or deterministic tool-backed reply.
+    if fallback.is_demo_mode():
+        cached = fallback.get_cached_reply(user_id, message, resolved_tone)
+        if cached is not None:
+            return _build_reply(cached.text, cached.numbers_used)
+        demo_reply = fallback.build_fallback_reply(user_id, message, resolved_tone)
+        if demo_reply is not None:
+            return _build_reply(demo_reply.text, demo_reply.numbers_used)
+
     system_prompt = build_system_prompt(resolved_tone)
     model = config.LLM_MODEL
+    active_tools = tools.get_active_tools()
 
     messages: list[dict[str, Any]] = [{"role": "user", "content": message}]
     numbers_used: dict[str, float] = {}
@@ -215,13 +234,21 @@ def run_chat(user_id: str, message: str, tone: Optional[Tone] = None) -> ChatRep
             response = call_llm(
                 system_prompt=system_prompt,
                 messages=messages,
-                tool_defs=tools.TOOLS,
+                tool_defs=active_tools,
                 model=model,
                 timeout=LLM_TIMEOUT_SECONDS,
             )
         except BaseException as exc:
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
+            if not had_tool_error and round_idx == 0:
+                cached = fallback.get_cached_reply(user_id, message, resolved_tone)
+                if cached is not None:
+                    return _build_reply(cached.text, cached.numbers_used)
+                if isinstance(exc, httpx.ConnectError):
+                    fb_reply = fallback.build_fallback_reply(user_id, message, resolved_tone)
+                    if fb_reply is not None:
+                        return _build_reply(fb_reply.text, fb_reply.numbers_used)
             apology = TOOL_FAILURE_APOLOGY if had_tool_error else LLM_UNAVAILABLE_APOLOGY
             return _build_reply(apology, numbers_used)
 
@@ -234,7 +261,10 @@ def run_chat(user_id: str, message: str, tone: Optional[Tone] = None) -> ChatRep
                 return _build_reply(apology, numbers_used)
             if had_tool_error and _has_unverified_currency(reply_text, numbers_used):
                 return _build_reply(TOOL_FAILURE_APOLOGY, numbers_used)
-            return _build_reply(reply_text, numbers_used)
+            final_reply = _build_reply(reply_text, numbers_used)
+            if not had_tool_error:
+                fallback.cache_reply(user_id, message, resolved_tone, final_reply)
+            return final_reply
 
         # If a tool already failed in an earlier round and the LLM still does not return a final apology, stop cleanly.
         if had_tool_error:
@@ -277,4 +307,3 @@ def run_chat(user_id: str, message: str, tone: Optional[Tone] = None) -> ChatRep
     if had_tool_error:
         return _build_reply(TOOL_FAILURE_APOLOGY, numbers_used)
     return _build_reply(MAX_ROUNDS_APOLOGY, numbers_used)
-

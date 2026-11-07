@@ -2,15 +2,26 @@
 
 Add a file per rule and register it in RULES. Keep tips as information, never advice.
 """
-from typing import Optional
+from typing import Callable, Optional
 
 from contracts.schemas import Tip
 
-from . import bike_to_work
+from . import bike_to_work, railcard_16_25, student_council_tax
+
+RULES: list[Callable[[str], Optional[Tip]]] = [
+    bike_to_work.check,
+    railcard_16_25.check,
+    student_council_tax.check,
+]
 
 
 def all_tips(user_id: str) -> list[Tip]:
-    return [t for rule in RULES if (t := rule(user_id)) is not None]
-
-
-RULES = [bike_to_work.check]
+    tips: list[Tip] = []
+    for rule in RULES:
+        try:
+            tip = rule(user_id)
+        except Exception:
+            tip = None
+        if tip is not None:
+            tips.append(tip)
+    return tips

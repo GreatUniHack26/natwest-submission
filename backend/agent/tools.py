@@ -1,10 +1,11 @@
-"""P3: tools exposed to the LLM. Each is a thin wrapper over a forecast function."""
+"""P3: tools exposed to the LLM. Each is a thin wrapper over a forecast, rules, or benchmark function."""
 import datetime as dt
 import math
 from typing import Any
 
-from backend import config
+from backend import config, rules
 from backend import forecast as fc
+from backend.agent import benchmark_adapter
 
 TOOLS = [
     {
@@ -48,9 +49,23 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "get_tips",
+        "description": "General savings and tax-efficiency information relevant to the user's spending patterns (information, not regulated advice).",
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
 ]
 
 _TOOL_SCHEMAS = {tool["name"]: tool["input_schema"] for tool in TOOLS}
+_TOOL_SCHEMAS["get_benchmark"] = benchmark_adapter.BENCHMARK_TOOL_SCHEMA["input_schema"]
+
+
+def get_active_tools() -> list[dict[str, Any]]:
+    """Return tools exposed to the LLM, including get_benchmark only when backend.benchmarks is available."""
+    active = list(TOOLS)
+    if benchmark_adapter.is_benchmarks_available():
+        active.append(benchmark_adapter.BENCHMARK_TOOL_SCHEMA)
+    return active
 
 
 def _is_number(val: Any) -> bool:
@@ -131,5 +146,11 @@ def run_tool(user_id: str, name: str, args: dict):
         if not _is_int(horizon_days) or horizon_days < 1 or horizon_days > 365:
             raise ValueError("horizon_days must be an integer between 1 and 365")
         return fc.forecast(user_id, horizon_days).model_dump(mode="json")
+
+    if name == "get_tips":
+        return [t.model_dump(mode="json") for t in rules.all_tips(user_id)]
+
+    if name == "get_benchmark":
+        return benchmark_adapter.run_get_benchmark(user_id, validated)
 
     raise ValueError(f"Unknown tool: {name}")
