@@ -99,14 +99,12 @@ def test_categoriser_agrees_with_generator_labels_where_rules_exist(sam):
         assert (out[t.id].category, out[t.id].kind) == (t.category, t.kind), t.merchant
 
 
-@pytest.mark.xfail(reason="issue #6 bug: substring rule 'tfl' matches 'NeTFLix' -> transport/need", strict=False)
 def test_netflix_is_not_mistaken_for_transport(sam):
     _, txs, _ = sam
     netflix = [t for t in txs if t.merchant == "Netflix"]
     assert netflix and all(t.category == "subscriptions" for t in categorise(netflix))
 
 
-@pytest.mark.xfail(reason="issue #6: add giffgaff/spotify/netflix to categoriser.RULES", strict=False)
 def test_every_generated_merchant_has_a_rule(sam):
     _, txs, _ = sam
     uncovered = {t.merchant for t in txs if t.amount < 0 and not any(k in t.merchant.lower() for k in RULES)}
