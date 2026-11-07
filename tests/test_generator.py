@@ -58,7 +58,7 @@ def test_rent_on_first_of_each_month(sam):
     _, txs, _ = sam
     rent = [t for t in txs if t.category == "housing"]
     assert [t.date for t in rent] == [dt.date(2026, m, 1) for m in range(6, 12)]
-    assert all(t.amount == -475.00 for t in rent)
+    assert all(t.amount == -950.00 for t in rent)
 
 
 def test_recurring_phone_and_subscriptions(sam):
