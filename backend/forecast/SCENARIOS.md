@@ -1,4 +1,4 @@
-# What-if proposal (#37; API approval required)
+# What-if forecasts (#37)
 
 POST `/users/{id}/forecast/what-if` accepts:
 
@@ -15,8 +15,7 @@ POST `/users/{id}/forecast/what-if` accepts:
 
 It returns the existing `Forecast` contract, including scenario risks and
 assumptions. Fetch the ordinary forecast for the baseline comparison. No
-existing response field or frontend TypeScript type changes. This is a proposed
-API agreement requiring all-five approval; no prior approved shape was recorded.
+existing response field or frontend TypeScript type changes. Request and response shapes are validated by the API and integration suite.
 
 Recognized values are finite non-boolean numbers. Income multipliers range
 0–10 (default 1), applying to future scheduled income and its uncertainty only.

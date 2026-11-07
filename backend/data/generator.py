@@ -11,8 +11,9 @@ Persona 'sam' (student, irregular income): 6 months of history ending at TODAY w
       * eating-out spike in the last 7 days (~60% above the prior 4-week average)
       * December rent pot (£950, due 1 Dec) and emergency pot (£300)
       * closing balance £1,640 -> safe-to-spend £210 (1640 - 1250 pots - 180 bills)
-        The December dip near 26 Dec is the forecast engine's job; it emerges from
-        this income pattern + the pots, it is not generated here.
+      * a fixed study stipend bounds the next-income reservation; variable shifts remain uncertain
+      * course-fee instalments on the 26th create the December cash-flow stress
+        The forecast computes its risk dates from these transactions; no risk output is seeded.
 
 Balance note: the Transaction contract has no balance field, so balance = sum of
 transactions. A single 'Opening balance' income row on day one makes the total exact.
@@ -38,9 +39,15 @@ OPENING_BALANCE_MERCHANT = "Opening balance"
 HOUSEHOLDS = ("family",)
 
 HISTORY_MONTHS = 6
-RENT = 475.00
+RENT = 950.00
 PHONE_BILL = 15.00
 PHONE_DAY = 12
+UTILITIES_BILL = 154.01
+UTILITIES_DAY = 15
+STIPEND = 150.00
+STIPEND_DAY = 20
+COURSE_INSTALMENT = 800.00
+COURSE_DAY = 26
 SUBSCRIPTIONS = [("Spotify", 5.99, 3), ("Netflix", 10.99, 20)]  # (merchant, £, day of month)
 UNI_WEEKDAY = 1  # Tuesday
 SHIFT_GAP_DAYS = (3, 5)
@@ -48,7 +55,7 @@ SHIFT_PAY = (60, 180)
 
 # Demo targets: safe_to_spend = balance - pots_total - upcoming_bills
 POTS_TOTAL = 950.00 + 300.00
-UPCOMING_BILLS = 180.00
+UPCOMING_BILLS = PHONE_BILL + UTILITIES_BILL + SUBSCRIPTIONS[1][1]  # before/on the stipend date
 SAFE_TO_SPEND = 210.00
 TARGET_BALANCE = POTS_TOTAL + UPCOMING_BILLS + SAFE_TO_SPEND  # 1640.00
 
@@ -104,6 +111,12 @@ def _sam(seed: int) -> tuple[User, list[Transaction], list[Pot]]:
             rows.append((day, "Landlord (rent)", -RENT, "housing", "need"))
         if day.day == PHONE_DAY:
             rows.append((day, "Giffgaff", -PHONE_BILL, "bills", "need"))
+        if day.day == UTILITIES_DAY:
+            rows.append((day, "Octopus Energy", -UTILITIES_BILL, "bills", "need"))
+        if day.day == STIPEND_DAY:
+            rows.append((day, "Study stipend", STIPEND, "income", "income"))
+        if day.day == COURSE_DAY:
+            rows.append((day, "Course fee instalment", -COURSE_INSTALMENT, "education", "need"))
         for merchant, amount, sub_day in SUBSCRIPTIONS:
             if day.day == sub_day:
                 rows.append((day, merchant, -amount, "subscriptions", "want"))
@@ -118,12 +131,12 @@ def _sam(seed: int) -> tuple[User, list[Transaction], list[Pot]]:
             shop = rng.choice(["Tesco", "Lidl"])
             rows.append((day, shop, -round(rng.uniform(12, 35), 2), "groceries", "need"))
 
-        # Everyday eating out. The spike week gets none here; it is planted below.
-        if day < spike_start and day.weekday() != UNI_WEEKDAY and rng.random() < 0.35:
-            if rng.random() < 0.6:
-                rows.append((day, "Greggs", -round(rng.uniform(3, 7), 2), "eating out", "want"))
-            else:
-                rows.append((day, "Deliveroo", -round(rng.uniform(12, 20), 2), "eating out", "want"))
+        # One takeaway and one snack most weeks give the anomaly a stable baseline.
+        # The spike week is planted below, including its usual Tuesday uni food.
+        if day < spike_start and day.weekday() == 4:
+            rows.append((day, "Deliveroo", -round(rng.uniform(12, 20), 2), "eating out", "want"))
+        if day < spike_start and day.weekday() == 5:
+            rows.append((day, "Greggs", -round(rng.uniform(3, 7), 2), "eating out", "want"))
 
         # Irregular shift pay
         if day == next_shift:

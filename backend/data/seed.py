@@ -1,8 +1,10 @@
 """Seed the SQLite DB with generated personas. Run: `make seed` (idempotent).
 
-Persists via repository.save_persona (the only code allowed to touch the DB).
+Labels are computed once here via categorise() (rules + cache; no live LLM call when every
+merchant is known). Persists via repository.save_persona (the only code allowed to touch the DB).
 """
 from backend import config
+from backend.data.categoriser import categorise
 from backend.data.generator import generate_household, generate_persona
 from backend.data.repository import save_persona
 
@@ -19,7 +21,7 @@ def seed(
         members += generate_household(name, seed_value)
     counts = {}
     for user, txs, pots in members:
-        save_persona(user, txs, pots)
+        save_persona(user, categorise(txs), pots)  # labels pre-computed at seed time
         counts[user.id] = len(txs)
     return counts
 

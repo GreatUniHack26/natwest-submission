@@ -99,14 +99,12 @@ def test_categoriser_agrees_with_generator_labels_where_rules_exist(sam):
         assert (out[t.id].category, out[t.id].kind) == (t.category, t.kind), t.merchant
 
 
-@pytest.mark.xfail(reason="issue #6 bug: substring rule 'tfl' matches 'NeTFLix' -> transport/need", strict=False)
 def test_netflix_is_not_mistaken_for_transport(sam):
     _, txs, _ = sam
     netflix = [t for t in txs if t.merchant == "Netflix"]
     assert netflix and all(t.category == "subscriptions" for t in categorise(netflix))
 
 
-@pytest.mark.xfail(reason="issue #6: add giffgaff/spotify/netflix to categoriser.RULES", strict=False)
 def test_every_generated_merchant_has_a_rule(sam):
     _, txs, _ = sam
     uncovered = {t.merchant for t in txs if t.amount < 0 and not any(k in t.merchant.lower() for k in RULES)}
@@ -132,11 +130,14 @@ def test_shift_income_is_not_confusable_with_a_fixed_salary(sam):
     assert max(amounts) / min(amounts) > 1.5
 
 
-def test_opening_balance_is_the_only_non_shift_income(sam):
-    """Recurring-income consumers can exclude exactly one marker merchant."""
+def test_opening_balance_stipend_and_shift_income_are_distinct(sam):
+    """A fixed study stipend is separate from irregular shift receipts and savings."""
     _, txs, _ = sam
     merchants = {t.merchant for t in txs if t.kind == "income"}
-    assert merchants == {OPENING_BALANCE_MERCHANT, "Cafe shift pay"}
+    assert merchants == {OPENING_BALANCE_MERCHANT, "Cafe shift pay", "Study stipend"}
+    stipend = [t for t in txs if t.merchant == "Study stipend"]
+    assert {t.amount for t in stipend} == {150}
+    assert {t.date.day for t in stipend} == {20}
 
 
 def test_alert_window_sees_the_spike(sam):
