@@ -48,4 +48,4 @@ def detect_alerts(user_id: str) -> list[Alert]:
     return find_alerts(user_id)
 
 
-from .sales import upcoming_sales
+from .sales import upcoming_sales  # shared calendar used by the agent and simulator
