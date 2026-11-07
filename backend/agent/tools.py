@@ -1,12 +1,8 @@
 """P3: tools exposed to the LLM. Each is a thin wrapper over a forecast function."""
 import datetime as dt
-import json
-from pathlib import Path
 
 from backend import config
 from backend import forecast as fc
-
-_SALES = json.loads((Path(__file__).parent / "sales_calendar.json").read_text())
 
 TOOLS = [
     {
@@ -37,8 +33,7 @@ TOOLS = [
 
 
 def get_upcoming_sales(within_days: int = 60) -> list[dict]:
-    end = config.TODAY + dt.timedelta(days=within_days)
-    return [s for s in _SALES if config.TODAY <= dt.date.fromisoformat(s["date"]) <= end]
+    return fc.upcoming_sales(within_days)
 
 
 def run_tool(user_id: str, name: str, args: dict):
