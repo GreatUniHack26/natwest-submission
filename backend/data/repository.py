@@ -39,6 +39,15 @@ CREATE TABLE IF NOT EXISTS pots (
     due_date TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_pots_user ON pots(user_id);
+-- User corrections to a transaction's label. Deliberately NOT foreign-keyed: re-seeding
+-- replaces transaction (and user) rows, and overrides must survive that.
+CREATE TABLE IF NOT EXISTS transaction_overrides (
+    transaction_id TEXT NOT NULL,
+    user_id        TEXT NOT NULL,
+    category       TEXT NOT NULL,
+    kind           TEXT NOT NULL,
+    PRIMARY KEY (user_id, transaction_id)
+);
 """
 
 
@@ -87,13 +96,21 @@ def get_transactions(
     if config.MOCK_DATA:
         txs = [Transaction(**t) for t in mock.load("transactions")]
         return [t for t in txs if (not start or t.date >= start) and (not end or t.date <= end)]
-    sql, args = "SELECT * FROM transactions WHERE user_id = ?", [user_id]
+    # Overrides are layered on read, so every consumer (forecast, alerts, API) sees them and
+    # the original labels stay intact underneath.
+    sql = (
+        "SELECT t.id, t.user_id, t.date, t.merchant, t.amount, "
+        "COALESCE(o.category, t.category) AS category, COALESCE(o.kind, t.kind) AS kind "
+        "FROM transactions t LEFT JOIN transaction_overrides o "
+        "ON o.user_id = t.user_id AND o.transaction_id = t.id WHERE t.user_id = ?"
+    )
+    args: list = [user_id]
     if start:
-        sql, args = sql + " AND date >= ?", args + [_iso(start)]
+        sql, args = sql + " AND t.date >= ?", args + [_iso(start)]
     if end:
-        sql, args = sql + " AND date <= ?", args + [_iso(end)]
+        sql, args = sql + " AND t.date <= ?", args + [_iso(end)]
     with _connect() as conn:
-        rows = conn.execute(sql + " ORDER BY date, id", args).fetchall()
+        rows = conn.execute(sql + " ORDER BY t.date, t.id", args).fetchall()
     return [Transaction(**dict(r)) for r in rows]
 
 
@@ -118,6 +135,57 @@ def add_pot(pot: Pot) -> Pot:
             (pot.id, pot.user_id, pot.name, pot.amount, _iso(pot.due_date)),
         )
     return pot
+
+
+_OVERRIDE_KINDS = ("need", "want", "income")
+
+
+def _clean_override(category: str, kind: str) -> tuple[str, str]:
+    category = (category or "").strip().lower()
+    if not category:
+        raise ValueError("Override category must not be empty")
+    if kind not in _OVERRIDE_KINDS:
+        raise ValueError(f"Override kind must be one of {_OVERRIDE_KINDS}, got {kind!r}")
+    return category, kind
+
+
+def set_override(user_id: str, transaction_id: str, category: str, kind: str) -> Transaction:
+    """Persist the user's label for one transaction and return it as the user now sees it.
+
+    Raises ValueError for an empty category or invalid kind; KeyError if the user has no such
+    transaction. Calling again replaces the previous override. In mock mode the fixture
+    transaction is returned with the override applied, without persisting (like add_pot).
+    """
+    category, kind = _clean_override(category, kind)
+    if config.MOCK_DATA:
+        found = next((t for t in get_transactions(user_id) if t.id == transaction_id), None)
+        if found is None:
+            raise KeyError(f"Unknown transaction {transaction_id!r}")
+        return found.model_copy(update={"category": category, "kind": kind})
+    with _connect() as conn:
+        if conn.execute(
+            "SELECT 1 FROM transactions WHERE id = ? AND user_id = ?", (transaction_id, user_id)
+        ).fetchone() is None:
+            raise KeyError(f"Unknown transaction {transaction_id!r} for user {user_id!r}")
+        conn.execute(
+            "INSERT INTO transaction_overrides (transaction_id, user_id, category, kind) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT(user_id, transaction_id) "
+            "DO UPDATE SET category = excluded.category, kind = excluded.kind",
+            (transaction_id, user_id, category, kind),
+        )
+    return next(t for t in get_transactions(user_id) if t.id == transaction_id)
+
+
+def get_overrides(user_id: str) -> dict[str, tuple[str, str]]:
+    """{transaction_id: (category, kind)} for `categorise(..., overrides=...)`. Mock mode: {}."""
+    if config.MOCK_DATA:
+        return {}
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT transaction_id, category, kind FROM transaction_overrides WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+    return {r["transaction_id"]: (r["category"], r["kind"]) for r in rows}
 
 
 def save_persona(user: User, transactions: list[Transaction], pots: list[Pot]) -> None:
