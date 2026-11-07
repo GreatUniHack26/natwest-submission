@@ -35,7 +35,7 @@ def _everyone(seed=42):
 def test_public_interface_is_exactly_what_the_docstring_promises():
     assert set(data.__all__) == {
         "get_user", "get_household_members", "get_transactions", "get_pots", "add_pot",
-        "categorise", "generate_persona", "generate_household",
+        "set_override", "get_overrides", "categorise", "generate_persona", "generate_household",
     }
     assert all(callable(getattr(data, name)) for name in data.__all__)
 
@@ -46,7 +46,9 @@ def test_public_interface_is_exactly_what_the_docstring_promises():
     ("get_transactions", ["user_id", "start", "end"]),
     ("get_pots", ["user_id"]),
     ("add_pot", ["pot"]),
-    ("categorise", ["transactions"]),
+    ("set_override", ["user_id", "transaction_id", "category", "kind"]),
+    ("get_overrides", ["user_id"]),
+    ("categorise", ["transactions", "overrides"]),
     ("generate_persona", ["name", "seed"]),
     ("generate_household", ["name", "seed"]),
 ])

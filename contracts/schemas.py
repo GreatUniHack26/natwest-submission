@@ -34,6 +34,12 @@ class Transaction(BaseModel):
     kind: Kind  # need / want / income
 
 
+class CategoryOverride(BaseModel):
+    """User correction of a transaction's label: PATCH /users/{id}/transactions/{tid}."""
+    category: str = Field(min_length=1)
+    kind: Kind
+
+
 class Pot(BaseModel):
     id: str
     user_id: str
