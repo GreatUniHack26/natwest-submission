@@ -165,6 +165,9 @@ def test_run_get_benchmark_with_real_backend_benchmarks_module():
     result = benchmark_adapter.run_get_benchmark("sam", {"category": "eating out"})
     assert result["region"] == "Manchester"
     assert result["household_size"] == 1
-    assert result["comparable"] is True
-    assert result["numbers_used"]["benchmark_eating_out"] > 0
+    # The real ONS group also includes accommodation; it cannot support this comparison.
+    assert result["comparable"] is False
+    assert result["benchmark"] is None
+    assert "benchmark_eating_out" not in result["numbers_used"]
+    assert "No comparable" in result["explanation"]
     assert result["numbers_used"]["user_eating_out_spend"] == pytest.approx(23.70)
