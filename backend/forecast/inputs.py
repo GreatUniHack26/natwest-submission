@@ -24,9 +24,9 @@ class Inputs:
     pots: list[Pot]
 
 
-def load_inputs(user_id: str, as_of: dt.date) -> Inputs:
+def load_inputs(user_id: str, as_of: dt.date, *, household_id: str | None = None) -> Inputs:
     user = repository.get_user(user_id)
-    if user.id != user_id:
+    if user.id != user_id or (household_id is not None and user.household_id != household_id):
         raise LookupError(f'Unknown user: {user_id}')
     get_balance = getattr(repository, 'get_balance', None)
     if get_balance is None:
@@ -39,4 +39,4 @@ def load_inputs(user_id: str, as_of: dt.date) -> Inputs:
         raise ValueError('Repository returned financial data for another user')
     if any(pence(p.amount) < 0 for p in pots):
         raise ValueError('Pot amounts must be nonnegative')
-    return Inputs(user_id, as_of, balance, [t for t in transactions if start <= t.date <= as_of], pots)
+    return Inputs(user_id, as_of, balance, [t for t in transactions if start <= t.date <= as_of and t.category != 'internal_transfer'], pots)

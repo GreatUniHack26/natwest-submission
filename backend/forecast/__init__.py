@@ -49,3 +49,15 @@ def detect_alerts(user_id: str) -> list[Alert]:
 
 
 from .sales import upcoming_sales  # shared calendar used by the agent and simulator
+
+
+def household_forecast(household_id: str, horizon: int = 90) -> Forecast:
+    from .household import household_forecast as calculate
+
+    return calculate(household_id, horizon)
+
+
+def household_safe_to_spend(household_id: str) -> SafeToSpend:
+    from .household import household_safe_to_spend as calculate
+
+    return calculate(household_id)
