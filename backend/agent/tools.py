@@ -5,7 +5,7 @@ from typing import Any
 
 from backend import config, rules
 from backend import forecast as fc
-from backend.agent import benchmark_adapter
+from backend.agent import benchmark_adapter, planner_tools
 
 TOOLS = [
     {
@@ -54,6 +54,7 @@ TOOLS = [
         "description": "General savings and tax-efficiency information relevant to the user's spending patterns (information, not regulated advice).",
         "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
+    *planner_tools.PLANNER_TOOLS,
 ]
 
 _TOOL_SCHEMAS = {tool["name"]: tool["input_schema"] for tool in TOOLS}
@@ -152,5 +153,14 @@ def run_tool(user_id: str, name: str, args: dict):
 
     if name == "get_benchmark":
         return benchmark_adapter.run_get_benchmark(user_id, validated)
+
+    if name == "plan_debt_payoff":
+        return planner_tools.debt_payoff(user_id, validated)
+
+    if name == "plan_savings_goal":
+        return planner_tools.savings_goal(user_id, validated)
+
+    if name == "plan_emergency_fund":
+        return planner_tools.emergency_fund(user_id, validated)
 
     raise ValueError(f"Unknown tool: {name}")
