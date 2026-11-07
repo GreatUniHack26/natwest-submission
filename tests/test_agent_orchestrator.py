@@ -87,7 +87,7 @@ def test_thirty_pound_shirt_triggers_simulate_purchase_and_merges_numbers(monkey
 
     # 4. Verify model pinning and tool schemas passed to LLM
     assert llm_calls[0]["model"] == "claude-sonnet-5-5"
-    assert llm_calls[0]["tool_defs"] == tools.TOOLS
+    assert llm_calls[0]["tool_defs"] == tools.get_active_tools()
 
 
 def test_failed_tool_produces_plain_apology_without_invented_numbers(monkeypatch):
