@@ -10,7 +10,7 @@ from contracts.schemas import BreakdownItem, SafeToSpend
 from .inputs import Inputs, load_inputs
 from .money import pence, pounds
 from .recurring import occurrences, patterns, payment_std
-from .reservations import allocations, bill_schedule
+from .reservations import allocations, bill_schedule, remaining_pots
 
 
 def safe_from_inputs(data: Inputs) -> SafeToSpend:
@@ -20,7 +20,7 @@ def safe_from_inputs(data: Inputs) -> SafeToSpend:
     incomes = [day for item, observations in detected if item.amount > 0 and payment_std(item, observations) == 0
                for day in occurrences(item, start, fallback)]
     cutoff = min(incomes, default=fallback)
-    pots = [p for p in data.pots if p.due_date is None or p.due_date >= data.as_of]
+    pots = [p for p in remaining_pots(data.pots, data.transactions, data.as_of) if p.due_date is None or p.due_date >= data.as_of]
     bills = bill_schedule([item for item, _ in detected], start, cutoff)
     credits, _ = allocations(pots, bills)
     pots_total = sum(pence(p.amount) for p in pots)
