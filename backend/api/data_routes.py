@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from backend import data
+from backend.data.repository import DuplicatePotError, UnknownUserError
 from contracts.schemas import CategoryOverride, Pot, Transaction, User
 
 router = APIRouter(prefix="/users/{user_id}", tags=["data"])
@@ -11,7 +12,10 @@ router = APIRouter(prefix="/users/{user_id}", tags=["data"])
 
 @router.get("", response_model=User)
 def get_user(user_id: str):
-    return data.get_user(user_id)
+    try:
+        return data.get_user(user_id)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=e.args[0])
 
 
 @router.get("/transactions", response_model=list[Transaction])
@@ -36,4 +40,9 @@ def get_pots(user_id: str):
 
 @router.post("/pots", response_model=Pot)
 def add_pot(user_id: str, pot: Pot):
-    return data.add_pot(pot)
+    try:
+        return data.add_pot(pot)
+    except UnknownUserError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except DuplicatePotError as e:
+        raise HTTPException(status_code=409, detail=str(e))

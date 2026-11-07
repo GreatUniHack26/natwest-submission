@@ -53,6 +53,14 @@ CREATE TABLE IF NOT EXISTS transaction_overrides (
 """
 
 
+class UnknownUserError(ValueError):
+    """Raised by add_pot when the pot's owner does not exist (a ValueError, as before)."""
+
+
+class DuplicatePotError(ValueError):
+    """Raised by add_pot when a pot with that id already exists (a ValueError, as before)."""
+
+
 @contextmanager
 def _connect() -> Iterator[sqlite3.Connection]:
     """Connection per call; commits on success, rolls back on error, always closes."""
@@ -129,9 +137,9 @@ def add_pot(pot: Pot) -> Pot:
         return pot  # not persisted in mock mode
     with _connect() as conn:
         if conn.execute("SELECT 1 FROM users WHERE id = ?", (pot.user_id,)).fetchone() is None:
-            raise ValueError(f"Cannot add pot: unknown user {pot.user_id!r}")
+            raise UnknownUserError(f"Cannot add pot: unknown user {pot.user_id!r}")
         if conn.execute("SELECT 1 FROM pots WHERE id = ?", (pot.id,)).fetchone() is not None:
-            raise ValueError(f"Cannot add pot: id {pot.id!r} already exists")
+            raise DuplicatePotError(f"Cannot add pot: id {pot.id!r} already exists")
         conn.execute(
             "INSERT INTO pots (id, user_id, name, amount, due_date) VALUES (?, ?, ?, ?, ?)",
             (pot.id, pot.user_id, pot.name, pot.amount, _iso(pot.due_date)),
