@@ -40,7 +40,7 @@ def test_seeding_makes_zero_llm_calls(env):
 
 def test_seeded_db_labels_match_the_generators(env):
     seed()
-    members = [generate_persona("sam"), generate_persona("salaried"), *generate_household("family")]
+    members = [generate_persona("sam"), generate_persona("salaried"), generate_persona("pete"), *generate_household("family")]
     for user, txs, _ in members:
         stored = repository.get_transactions(user.id)
         assert {t.id: (t.category, t.kind) for t in stored} == {t.id: (t.category, t.kind) for t in txs}
@@ -48,7 +48,7 @@ def test_seeded_db_labels_match_the_generators(env):
 
 def test_every_stored_transaction_is_labelled(env):
     seed()
-    for uid in ("sam", "alex", "maya", "dan"):
+    for uid in ("sam", "alex", "maya", "dan", "pete"):
         stored = repository.get_transactions(uid)
         assert stored
         assert all(t.category and t.kind in VALID_KINDS for t in stored)

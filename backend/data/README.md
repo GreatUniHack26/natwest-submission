@@ -16,6 +16,7 @@ Seeding needs no API key: rules and the committed `label_cache.json` cover every
 | id | persona | notes |
 |---|---|---|
 | `sam` | student, irregular income (Manchester) | planted eating-out spike, December rent pot |
+| `pete` | university student with a part-time cafe job (Manchester) | 12 months / 731 transactions, termly maintenance, four pots, purchase/history/twin demo; see `pitch/pete-demo.md` |
 | `alex` | salaried, fixed £2,350 on the 28th (Bristol) | the comfortable contrast case |
 | `maya`, `dan` | low-income family, household `h1` (Leeds) | shared pots owned once by `maya`; `dan`'s hours were cut ~30 days ago |
 

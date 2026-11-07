@@ -28,6 +28,7 @@ import "./twin.css";
 import "./theme.css";
 
 const personas = [
+  { name: "Pete", id: "pete" },
   { name: "Sam", id: "sam" },
   { name: "Alex", id: "alex" },
   { name: "Family", id: import.meta.env.VITE_FAMILY_USER_ID || "maya" },

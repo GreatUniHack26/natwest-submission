@@ -6,9 +6,24 @@ from typing import Any
 from backend import config, rules
 from backend import forecast as fc
 from backend.agent import benchmark_adapter, planner_tools
+from backend.agent.spending_history import spending_history
 from backend.integrations import govuk, news
 
 TOOLS = [
+    {
+        "name": "get_spending_history",
+        "description": "Recorded income and spending by category, merchant and month, plus latest transactions. Use for past expenses and follow-up comparisons; not a forecast. Defaults to this month to date. Maximum range 366 days.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "start": {"type": "string", "format": "date"},
+                "end": {"type": "string", "format": "date"},
+                "category": {"type": "string", "description": "Exact category, e.g. eating out"},
+                "merchant": {"type": "string", "description": "Merchant name substring, e.g. Uniqlo"},
+            },
+            "additionalProperties": False,
+        },
+    },
     {
         "name": "get_safe_to_spend",
         "description": "Money the user can spend today after pots and upcoming bills.",
@@ -152,6 +167,9 @@ def run_tool(user_id: str, name: str, args: dict):
         raise ValueError("user_id must be a non-empty string")
 
     validated = _validate_args(name, args)
+
+    if name == "get_spending_history":
+        return spending_history(user_id, validated)
 
     if name == "get_safe_to_spend":
         return fc.safe_to_spend(user_id, config.TODAY).model_dump(mode="json")

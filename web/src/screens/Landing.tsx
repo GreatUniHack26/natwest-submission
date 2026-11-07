@@ -15,6 +15,8 @@ interface PersonaMeta {
 }
 
 const PERSONAS: PersonaMeta[] = [
+  { id: "pete", traits: ["Student", "Part-time cafe job", "Termly maintenance"],
+    does: "Connects a year of spending to what you can afford next", av: "lav" },
   { id: "sam", traits: ["Irregular income", "Student", "Renting"], does: "Plans around gaps between paydays", av: "lav" },
   { id: "alex", traits: ["Fixed salary", "Paid monthly", "Renting"], does: "Finds the headroom in a steady budget", av: "purple" },
   { id: "maya", householdName: "Maya & Dan", traits: ["Household", "Shift & agency work", "Two incomes"],
@@ -52,7 +54,7 @@ export default function Landing({ onPick }: { onPick: (userId: string, tone?: To
     return { cards, failed };
   }, []);
 
-  const [pick, setPick] = useState("sam");
+  const [pick, setPick] = useState("pete");
   const [tone, setTone] = useState<Tone | null>(null);
   const cards = state.status === "ok" ? state.data.cards : [];
   const picked = cards.find((c) => c.user.id === pick) ?? cards[0];
