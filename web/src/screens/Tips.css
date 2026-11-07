@@ -50,3 +50,40 @@
 .ftp-row-note .fts-money { font-family: var(--s-font-body); font-weight: 700; }
 .ftp-note { display: flex; gap: 6px; align-items: flex-start; }
 .ftp-sources { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+
+/* Money you might be owed */
+.ftp-owed { padding: clamp(18px, 2vw, 28px); display: flex; flex-direction: column; gap: 18px; border-top: 4px solid var(--s-purple); }
+.ftp-owed .fts-state, .ftp-owed .fts-loading { padding: 8px 0; }
+.ftp-owed-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 16px; }
+.ftp-owed-title { flex: 1 1 280px; display: flex; flex-direction: column; gap: 4px; }
+.ftp-owed-title h2 { font: 800 clamp(20px, 2vw, 24px)/1.25 var(--s-font-display); color: var(--s-deep); }
+.ftp-owed-title p { font-size: 15px; line-height: 1.5; color: var(--s-text-2); }
+.ftp-owed-total {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 12px 18px;
+  background: var(--s-lav); border-radius: var(--s-radius); color: var(--s-deep);
+}
+.ftp-owed-total strong { font-size: clamp(26px, 2.6vw, 32px); font-weight: 800; line-height: 1.1; }
+.ftp-owed-total-l { font: 700 15px var(--s-font-body); }
+.ftp-owed-count { flex-basis: 100%; font-size: 13px; color: var(--s-text-2); }
+.ftp-owed-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+.ftp-owed-card {
+  padding: 18px; display: flex; flex-direction: column; gap: 10px;
+  border: 1px solid var(--s-line); border-radius: var(--s-radius); background: var(--s-white);
+}
+.ftp-owed-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.ftp-owed-top h3 { flex: 1 1 160px; margin: 0; font: 700 17px/1.3 var(--s-font-display); }
+.ftp-owed-top .fts-chip { flex: none; }
+.ftp-owed-value { display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--s-text-2); }
+.ftp-owed-value .fts-icon { color: var(--s-purple); font-size: 18px; }
+.ftp-owed-value strong { color: var(--s-deep); font-size: 20px; font-weight: 800; }
+.ftp-owed-why { display: flex; flex-direction: column; gap: 2px; }
+.ftp-owed-why p { margin: 0; font-size: 15px; line-height: 1.55; }
+.ftp-owed-label { font: 700 12px var(--s-font-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--s-text-2); }
+.ftp-owed-needs {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin: 0;
+  padding: 4px 12px; border-radius: var(--s-pill); background: var(--s-page); font: 700 13px var(--s-font-body); color: var(--s-deep);
+}
+.ftp-owed-links { display: flex; flex-wrap: wrap; gap: 0 18px; margin-top: auto; }
+.ftp-owed-card .ftp-foot { margin-top: 0; }
+.ftp-owed-foot { display: flex; flex-direction: column; gap: 2px; }
+.ftp-owed-empty { padding: 20px 8px; }

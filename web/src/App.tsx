@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, type ApiHealth } from "./api";
 import AlertList from "./components/AlertList";
 import ChatPanel from "./components/ChatPanel";
@@ -7,12 +7,18 @@ import HouseholdPanel from "./components/HouseholdPanel";
 import Icon from "./components/Icon";
 import PurchaseCheck from "./components/PurchaseCheck";
 import SafeToSpendCard from "./components/SafeToSpendCard";
+import CountUp from "./components/CountUp";
 import SavingsPots from "./components/SavingsPots";
 import DepositIdeas from "./components/DepositIdeas";
 import TwinOdds from "./components/TwinOdds";
 import TimeTravel from "./components/TimeTravel";
 import ResilienceStrip from "./components/ResilienceStrip";
-import AccessibilityMenu from "./components/AccessibilityMenu";
+import DepositHero from "./components/DepositHero";
+import ProfileSheet from "./components/ProfileSheet";
+import Sheet from "./components/Sheet";
+import Row from "./components/Row";
+import NatLauncher from "./components/NatLauncher";
+import { AlarmRows, loadAlarms } from "./components/NatAlarms";
 import Landing from "./screens/Landing";
 import AffordScreen from "./screens/AffordScreen";
 import Transactions from "./screens/Transactions";
@@ -26,23 +32,24 @@ import { buildWhatIf, type WhatIfSettings } from "./whatIf";
 import "./dashboard.css";
 import "./twin.css";
 import "./theme.css";
+import "./ui.css";
 
 const personas = [
-  { name: "Pete", id: "pete" },
-  { name: "Sam", id: "sam" },
-  { name: "Alex", id: "alex" },
-  { name: "Family", id: import.meta.env.VITE_FAMILY_USER_ID || "maya" },
+  { name: "Pete", id: "pete", label: "Pete", detail: "", initial: "P" },
+  { name: "Sam", id: "sam", label: "Sam", detail: "Student, irregular income", initial: "S" },
+  { name: "Alex", id: "alex", label: "Alex", detail: "Steady monthly salary", initial: "A" },
+  { name: "Family", id: import.meta.env.VITE_FAMILY_USER_ID || "maya", label: "Maya & Dan", detail: "Household, two incomes", initial: "M" },
 ] as const;
 type Persona = (typeof personas)[number];
 
 const sections = [
   { id: "overview", label: "Home", icon: "overview" },
-  { id: "forecast", label: "Future", icon: "forecast" },
-  { id: "afford", label: "Afford?", icon: "afford" },
-  { id: "coach", label: "Nat", icon: "coach" },
+  { id: "forecast", label: "Forecast", icon: "forecast" },
+  { id: "nat", label: "Nat", icon: "mic" },
   { id: "transactions", label: "Activity", icon: "activity" },
-  { id: "tips", label: "Tips", icon: "tips" },
 ] as const;
+// Reached from "More"
+const moreIds = ["afford", "tips", "household"];
 // Sections rendered as their own screen instead of a panel on the dashboard.
 const screenIds = ["afford", "transactions", "tips", "start"] as const;
 type ScreenId = (typeof screenIds)[number];
@@ -50,7 +57,6 @@ const screenFromHash = (): ScreenId | null => {
   const id = window.location.hash.slice(1);
   return (screenIds as readonly string[]).includes(id) ? (id as ScreenId) : null;
 };
-const householdSection = { id: "household", label: "Household", icon: "household" } as const;
 
 type RequestState<T> =
   | { status: "loading" | "error" }
@@ -89,9 +95,10 @@ function usePanel<T>(userId: string, load: (id: string, signal: AbortSignal) => 
   return { request, retry };
 }
 
-function ApiPanel<T>({ id, title, userId, load, revision, children }: {
+function ApiPanel<T>({ id, title, userId, load, revision, action, children }: {
   id: string;
   title: string;
+  action?: ReactNode;
   userId: string;
   load: (id: string, signal: AbortSignal) => Promise<T>;
   revision?: number;
@@ -108,14 +115,19 @@ function ApiPanel<T>({ id, title, userId, load, revision, children }: {
 
   return (
     <section ref={region} id={id} className="panel" tabIndex={-1} aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`}>{title}</h2>
-      {request.status === "ready" ? (
-        <>
-          {children(request.data)}
-          {request.refresh === "pending" && <p className="panel-loading" role="status">Updating {panelName}…</p>}
-          {request.refresh === "error" && <PanelStatus title={panelName} status="error" retry={retryPanel} stale />}
-        </>
-      ) : <PanelStatus title={panelName} status={request.status} retry={retryPanel} />}
+      <div className="panel-head">
+        <h2 id={`${id}-title`}>{title}</h2>
+        {action}
+      </div>
+      <div className="panel-body">
+        {request.status === "ready" ? (
+          <>
+            {children(request.data)}
+            {request.refresh === "pending" && <p className="panel-loading" role="status">Updating {panelName}…</p>}
+            {request.refresh === "error" && <PanelStatus title={panelName} status="error" retry={retryPanel} stale />}
+          </>
+        ) : <PanelStatus title={panelName} status={request.status} retry={retryPanel} />}
+      </div>
     </section>
   );
 }
@@ -151,7 +163,7 @@ function ProfileSummary({ profile, persona }: { profile: User; persona: Persona 
     return <p className="sample-notice" role="status">Showing {profile.name}’s sample data for the {persona.name} profile.</p>;
   }
 
-  return <p>{[profile.persona, profile.region].filter(Boolean).join(" · ") || "No profile details yet."}</p>;
+  return <p>{[profile.persona, profile.region].filter(Boolean).join(", ") || "No profile details yet."}</p>;
 }
 
 const loadForecast = (userId: string, signal: AbortSignal) => api.forecast(userId, 56, signal);
@@ -177,7 +189,7 @@ function ForecastContent({ forecast, mockForecast, userId, compact = false }: { 
         <TimeTravel userId={userId} compact />
         <a className="spending-link" href="#forecast">
           <Icon name="forecast" />
-          Open your time machine: what-ifs and 1,000 futures
+          Open the time machine
           <Icon name="chevron" />
         </a>
       </>
@@ -286,69 +298,74 @@ function Dashboard({ persona, mock, demoPots, onDemoPotAdded, view }: {
     setPotRevision((previous) => previous + 1);
   }
 
+  const profileProblem = request.status === "error" ? (
+    <div className="profile-line">
+      <p role="alert">Couldn’t load the profile.</p>
+      <button className="profile-retry" type="button" onClick={() => {
+        profileHeading.current?.focus({ preventScroll: true });
+        retry();
+      }}>
+        Try again<span className="visually-hidden"> to load the profile</span>
+      </button>
+    </div>
+  ) : request.status === "ready" && request.data.id !== persona.id ? (
+    <div className="profile-line"><ProfileSummary profile={request.data} persona={persona} /></div>
+  ) : null;
+
+  if (view === "home") {
+    return (
+      <>
+        <HomeHero name={name.split(" ")[0]} userId={persona.id} revision={potRevision}
+          demoPots={mock?.forecast ? visibleDemoPots : []} sampleForecast={Boolean(mock?.forecast && !mock.data)} />
+        <div className="home-body">
+          {profileProblem}
+          {mock?.forecast === false && <ResilienceStrip userId={persona.id} />}
+          {mock?.forecast === false && <DepositHero userId={persona.id} revision={potRevision} />}
+          <div className="dashboard-grid">
+            <div className="dash-col dash-col-left">
+              <ApiPanel id="forecast-preview" title="Forecast" userId={persona.id} load={loadForecast} revision={forecastRevision}
+                action={<a className="see-all" href="#forecast">See all</a>}>
+                {(forecast) => <ForecastContent forecast={forecast} mockForecast={mock?.forecast === true} userId={persona.id} compact />}
+              </ApiPanel>
+              {mock?.forecast === false ? (
+                <ApiPanel id="alerts" title="Alerts" userId={persona.id} load={loadAlarms} revision={forecastRevision}>
+                  {(alarms) => <AlarmRows alarms={alarms} />}
+                </ApiPanel>
+              ) : (
+                <ApiPanel id="alerts" title="Alerts" userId={persona.id} load={api.alerts} revision={forecastRevision}>
+                  {(alerts) => <AlertList alerts={alerts} />}
+                </ApiPanel>
+              )}
+            </div>
+            <div className="dash-col dash-col-right">
+              <ApiPanel id="pots" title="Pots" userId={persona.id} load={api.pots} revision={potRevision}>
+                {(pots) => (
+                  <SavingsPots
+                    pots={mergeDemoPots(pots, visibleDemoPots)}
+                    userId={persona.id}
+                    onPotAdded={refreshAfterSave}
+                    demoOnly={mock?.data}
+                  />
+                )}
+              </ApiPanel>
+              {mock?.forecast === false && <DepositIdeas userId={persona.id} revision={potRevision} />}
+            </div>
+          </div>
+          {persona.name === "Family" && <HouseholdPanel demo={mock?.data === true && mock.forecast} />}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div className="profile-summary">
-        <h1 ref={profileHeading} tabIndex={-1}>{view === "future" ? "Time machine" : view === "coach" ? "Talk to Nat" : "Your money"}</h1>
-        <div className="profile-line">
-          <span className="profile-name">{name}</span>
-          {request.status === "ready" ? <ProfileSummary profile={request.data} persona={persona} /> : (
-            request.status === "loading" ? <p role="status">Loading profile…</p> : (
-              <>
-                <p role="alert">Couldn’t load the profile.</p>
-                <button className="profile-retry" type="button" onClick={() => {
-                  profileHeading.current?.focus({ preventScroll: true });
-                  retry();
-                }}>
-                  Try again<span className="visually-hidden"> to load the profile</span>
-                </button>
-              </>
-            )
-          )}
-        </div>
+        <h1 ref={profileHeading} tabIndex={-1}>{view === "future" ? "Forecast" : "Nat"}</h1>
+        {profileProblem}
       </div>
-      {view === "home" && mock?.forecast === false && <ResilienceStrip userId={persona.id} />}
-      {view === "home" && (
-        <div className="dashboard-grid">
-          <div className="dash-col dash-col-left">
-          <ApiPanel id="spending" title="Safe to spend" userId={persona.id} load={api.safeToSpend} revision={potRevision}>
-            {(data) => {
-              const demoAdjustments = mock?.forecast ? visibleDemoPots : [];
-              return (
-                <>
-                  <SafeToSpendCard data={previewSafeToSpend(data, demoAdjustments)} demoPreview={demoAdjustments.length > 0} />
-                  {mock?.forecast && !mock.data && <p className="panel-empty">This amount uses the sample forecast.</p>}
-                </>
-              );
-            }}
-          </ApiPanel>
-          <ApiPanel id="pots" title="Savings pots" userId={persona.id} load={api.pots} revision={potRevision}>
-            {(pots) => (
-              <>
-                <SavingsPots
-                  pots={mergeDemoPots(pots, visibleDemoPots)}
-                  userId={persona.id}
-                  onPotAdded={refreshAfterSave}
-                  demoOnly={mock?.data}
-                />
-                {mock?.forecast === false && <DepositIdeas userId={persona.id} revision={potRevision} />}
-              </>
-            )}
-          </ApiPanel>
-          </div>
-          <div className="dash-col dash-col-right">
-          <ApiPanel id="forecast-preview" title="Your time machine" userId={persona.id} load={loadForecast} revision={forecastRevision}>
-            {(forecast) => <ForecastContent forecast={forecast} mockForecast={mock?.forecast === true} userId={persona.id} compact />}
-          </ApiPanel>
-          <ApiPanel id="alerts" title="Alerts" userId={persona.id} load={api.alerts} revision={forecastRevision}>
-            {(alerts) => <AlertList alerts={alerts} />}
-          </ApiPanel>
-          </div>
-        </div>
-      )}
       {view === "future" && (
         <div className="future-grid">
-          <ApiPanel id="forecast" title="Your time machine" userId={persona.id} load={loadForecast} revision={forecastRevision}>
+          <ApiPanel id="forecast" title="Your next 90 days" userId={persona.id} load={loadForecast} revision={forecastRevision}>
             {(forecast) => <ForecastContent forecast={forecast} mockForecast={mock?.forecast === true} userId={persona.id} />}
           </ApiPanel>
           {mock?.forecast === false && (
@@ -365,43 +382,101 @@ function Dashboard({ persona, mock, demoPots, onDemoPotAdded, view }: {
             : <ChatPanel userId={persona.id} sampleReply={mock?.agent === true} />}
         </div>
       )}
-      {view === "home" && persona.name === "Family" && <HouseholdPanel demo={mock?.data === true && mock.forecast} />}
     </>
+  );
+}
+
+/** Home hero: the purple header carries on with the one number that matters, safe to spend today. */
+function HomeHero({ name, userId, revision, demoPots, sampleForecast }: {
+  name: string;
+  userId: string;
+  revision: number;
+  demoPots: Pot[];
+  sampleForecast: boolean;
+}) {
+  const { request, retry } = usePanel(userId, api.safeToSpend, revision);
+  const [open, setOpen] = useState(false);
+  const data = request.status === "ready" ? previewSafeToSpend(request.data, demoPots) : null;
+
+  return (
+    <section className="home-hero" aria-labelledby="hero-hi">
+      <div className="home-hero-in">
+        <h1 className="hero-hi" id="hero-hi" tabIndex={-1}>Hi {name}</h1>
+        <p className="hero-label" id="hero-label">Safe to spend today</p>
+        {data ? (
+          <>
+            <p className="hero-amount" aria-describedby="hero-label" data-negative={data.safe_amount < 0}>
+              <CountUp value={data.safe_amount} />
+            </p>
+            <p className="hero-line">
+              {gbp(data.balance)} in account · {gbp(data.pots_total)} in pots · {gbp(data.upcoming_bills)} bills
+            </p>
+            <button type="button" className="hero-how" onClick={() => setOpen(true)}>How it’s worked out</button>
+            <Sheet open={open} onClose={() => setOpen(false)} title="Safe to spend">
+              <div className="block sheet-card" onClick={(e) => { if ((e.target as HTMLElement).closest("a")) setOpen(false); }}>
+                <SafeToSpendCard data={data} demoPreview={demoPots.length > 0} />
+              </div>
+              {sampleForecast && <p className="sheet-note">This amount uses the sample forecast.</p>}
+            </Sheet>
+          </>
+        ) : request.status === "error" ? (
+          <div className="hero-error" role="alert">
+            <p className="hero-line">Couldn’t load your balance.</p>
+            <button type="button" className="hero-how" onClick={retry}>Try again</button>
+          </div>
+        ) : (
+          <p className="hero-amount hero-loading" role="status"><span className="visually-hidden">Loading</span>…</p>
+        )}
+      </div>
+    </section>
   );
 }
 
 function currentView(): View {
   const id = window.location.hash.slice(1);
-  return id === "forecast" || id === "month" ? "future" : id === "coach" ? "coach" : "home";
+  return id === "forecast" || id === "month" ? "future" : id === "nat" ? "coach" : "home";
 }
 
 function currentSection() {
   const id = window.location.hash.slice(1);
-  return id === householdSection.id ? id : sections.find((section) => section.id === id)?.id ?? "overview";
+  if (moreIds.includes(id)) return "more";
+  return sections.find((section) => section.id === id)?.id ?? "overview";
 }
 
 function SectionNav({ showHousehold }: { showHousehold: boolean }) {
   const [active, setActive] = useState(currentSection);
-  const entries = showHousehold ? [...sections, householdSection] : sections;
-  const selected = active === "household" && !showHousehold ? "overview" : active;
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     function syncSection() {
       setActive(currentSection());
+      setMoreOpen(false);
     }
     window.addEventListener("hashchange", syncSection);
     return () => window.removeEventListener("hashchange", syncSection);
   }, []);
 
   return (
-    <nav className="section-nav" aria-label="Dashboard sections"
-      style={{ "--section-count": entries.length } as CSSProperties}>
-      {entries.map((section) => (
-        <a key={section.id} href={`#${section.id}`} aria-current={selected === section.id ? "location" : undefined}>
-          <Icon name={section.icon} />
+    <nav className="section-nav" aria-label="Main">
+      {sections.map((section) => (
+        <a key={section.id} href={`#${section.id}`} className={section.id === "nat" ? "nav-nat" : undefined}
+          aria-current={active === section.id ? "location" : undefined}>
+          {section.id === "nat" ? <span className="nav-nat-disc"><Icon name="mic" /></span> : <Icon name={section.icon} />}
           <span>{section.label}</span>
         </a>
       ))}
+      <button type="button" aria-current={active === "more" ? "location" : undefined} onClick={() => setMoreOpen(true)}>
+        <i className="ph ph-dots-three-outline" aria-hidden="true" />
+        <span>More</span>
+      </button>
+      <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="More">
+        <ul className="rows block">
+          <li><Row icon="scales" title="Can I afford it?" subtitle="Check a purchase before you buy" href="#afford" /></li>
+          <li><Row icon="hand-coins" title="Money you could get" subtitle="Help and discounts you may be owed" href="#tips" /></li>
+          <li><Row icon="lightbulb" title="Tips" subtitle="Ways to spend less, picked for you" href="#tips" /></li>
+          {showHousehold && <li><Row icon="users" title="Household" subtitle="Shared bills and who pays what" href="#household" /></li>}
+        </ul>
+      </Sheet>
     </nav>
   );
 }
@@ -428,10 +503,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Screens open at the top; dashboard anchors (#forecast, #coach…) scroll once the dashboard has mounted.
+    // Screens open at the top; dashboard anchors (#forecast, #nat…) scroll once the dashboard has mounted.
     const id = window.location.hash.slice(1);
     const timer = window.setTimeout(() => {
-      if (screen || !id || ["overview", "forecast", "coach"].includes(id)) window.scrollTo({ top: 0 });
+      if (screen || !id || ["overview", "forecast", "nat"].includes(id)) window.scrollTo({ top: 0 });
       else document.getElementById(id)?.scrollIntoView({ block: "start" });
     }, 60);
     return () => window.clearTimeout(timer);
@@ -459,37 +534,30 @@ export default function App() {
 
   return (
     <>
-      <a className="skip-link" href="#overview">Skip to dashboard</a>
+      <a className="skip-link" href="#overview">Skip to main content</a>
       <header className="app-header">
         <div className="toolbar">
-          <a className="brand" href="#overview" aria-label="FinTime overview">
-            <span className="brand-mark"><Icon name="brand" /></span>
-            FinTime
+          <a className="brand" href="#overview" aria-label="Nat home">
+            <span className="brand-mark" aria-hidden="true">N</span>
+            Nat
           </a>
           <SectionNav showHousehold={persona.name === "Family"} />
           <div className="toolbar-end">
-          <AccessibilityMenu />
-          <fieldset className="persona-picker">
-            <legend className="visually-hidden">Demo profile</legend>
-            {personas.map((option) => (
-              <label className="persona-option" key={option.name}>
-                <input className="visually-hidden" type="radio" name="persona" checked={persona.name === option.name}
-                  onChange={() => {
-                    setPersona(option);
-                    if (option.name === "Sam" && window.location.hash === "#household") {
-                      window.location.hash = "overview";
-                    }
-                  }} />
-                <span>{option.name}</span>
-              </label>
-            ))}
-          </fieldset>
+            <ProfileSheet
+              options={personas.map((p) => ({ key: p.name, label: p.label, detail: p.detail, initial: p.initial }))}
+              current={persona.name}
+              onPick={(key) => {
+                const option = personas.find((p) => p.name === key) ?? personas[0];
+                setPersona(option);
+                if (option.name !== "Family" && window.location.hash === "#household") window.location.hash = "overview";
+              }} />
           </div>
         </div>
       </header>
-      <main className="app-shell" id="overview" tabIndex={-1}>
+      {screen !== "start" && health?.mock.agent === false && <NatLauncher key={persona.id} userId={persona.id} name={persona.name === "Family" ? "Maya" : persona.name} />}
+      <main className="app-shell" id="overview" tabIndex={-1} data-view={screen ?? view}>
         {screen === "start" && <Landing onPick={(userId) => pickPersona(userId)} />}
-        {screen === "afford" && <AffordScreen key={persona.id} userId={persona.id} onAskCoach={() => { window.location.hash = "coach"; }} />}
+        {screen === "afford" && <AffordScreen key={persona.id} userId={persona.id} onAskCoach={() => { window.location.hash = "nat"; }} />}
         {screen === "transactions" && <Transactions key={persona.id} userId={persona.id} />}
         {screen === "tips" && <Tips key={persona.id} userId={persona.id} />}
         {screen === null && <Dashboard

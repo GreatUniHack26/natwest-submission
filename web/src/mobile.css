@@ -1,5 +1,4 @@
-/* Phone polish (iOS-first). Imported last from main.tsx.
-   Uses tokens from theme.css / dashboard.css only — no new colours, no gradients. */
+/* Phone polish (iOS-first). Imported last from main.tsx. Layout and components live in ui.css. */
 
 html {
   -webkit-text-size-adjust: 100%;
@@ -10,234 +9,22 @@ html {
 html, body { overflow-x: clip; }
 
 @media (max-width: 30rem) {
-  :root {
-    --page-gutter: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
-    --toolbar-height: 3.5rem;
-    --tab-bar-clearance: calc(3.75rem + env(safe-area-inset-bottom));
-    --m-shadow: 0 1px 2px rgb(60 16 83 / 5%), 0 6px 18px -8px rgb(60 16 83 / 14%);
-    --m-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  body {
-    min-height: 100dvh;
-    background: var(--c-page, var(--inset));
-    overscroll-behavior-y: none;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* Nested scrollers (tables, chat logs) get momentum + contained overscroll */
-  .forecast-values, .chat-log, .hh-grid { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-
-  /* ---------- Top bar: brand-purple, sticky, translucent ---------- */
-  .app-header {
-    isolation: isolate;
-    padding-top: env(safe-area-inset-top);
-    background: transparent;
-    border-bottom: 0;
-    color: var(--on-plum);
-  }
-
-  /* Blur lives on a pseudo-element so the header never becomes the
-     containing block of the fixed tab bar nested inside it. */
-  .app-header::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    /* Opaque in a Safari tab so it matches the theme-coloured status bar;
-       translucent once installed (see display-mode: standalone below). */
-    background: var(--c-purple, var(--tint));
-    -webkit-backdrop-filter: saturate(160%) blur(20px);
-    backdrop-filter: saturate(160%) blur(20px);
-    box-shadow: 0 1px 0 rgb(60 16 83 / 18%);
-  }
-
-  .toolbar { min-height: var(--toolbar-height); gap: 0.5rem; }
-
-  .brand { color: var(--on-plum); font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; gap: 0.5rem; }
-  .brand-mark {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 0.625rem;
-    background: var(--c-deep, var(--plum));
-  }
-  .brand-mark svg { width: 1.25rem; height: 1.25rem; }
-
-  .persona-picker { padding: 0.1875rem; background: var(--c-deep, var(--plum)); }
-  .persona-option span {
-    min-height: 2.75rem;
-    min-width: 3.75rem;
-    padding-inline: 0.75rem;
-    color: var(--on-plum);
-    font-size: 0.875rem;
-    font-weight: 700;
-  }
-  .persona-option input:checked + span { color: var(--c-purple, var(--tint)); background: var(--surface); }
-  .persona-option input:focus-visible + span { outline-color: var(--surface); }
-
-  /* ---------- Bottom tab bar ---------- */
-  .section-nav {
-    gap: 0;
-    padding: 0 max(0.25rem, env(safe-area-inset-left)) env(safe-area-inset-bottom) max(0.25rem, env(safe-area-inset-right));
-    background: var(--surface);
-    background: color-mix(in srgb, var(--surface) 90%, transparent);
-    border-top: 1px solid var(--line);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    backdrop-filter: saturate(180%) blur(20px);
-  }
-
-  .section-nav a {
-    position: relative;
-    min-height: 3.75rem;
-    gap: 0.1875rem;
-    padding: 0.375rem 0.125rem 0.25rem;
-    border-radius: 0;
-    background: transparent;
-    color: var(--muted);
-    font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    transition: color var(--press), transform var(--press);
-  }
-  .section-nav a::before {
-    content: "";
-    position: absolute;
-    top: -1px;
-    left: 22%;
-    right: 22%;
-    height: 3px;
-    border-radius: 0 0 3px 3px;
-    background: var(--c-purple, var(--tint));
-    transform: scaleX(0);
-    transition: transform 220ms var(--m-ease);
-  }
-  .section-nav a:hover { background: transparent; }
-  .section-nav svg { width: 1.375rem; height: 1.375rem; }
-  .section-nav a[aria-current="location"] { color: var(--c-purple, var(--tint)); background: transparent; }
-  .section-nav a[aria-current="location"]::before { transform: scaleX(1); }
-  .section-nav a:active { transform: scale(0.92); }
-  .section-nav a:focus-visible { outline-offset: -3px; border-radius: 0.75rem; }
-
-  /* ---------- Page body ---------- */
-  .app-shell { padding-top: 1.25rem; padding-bottom: calc(var(--tab-bar-clearance) + 1.5rem); }
-
-  /* iOS large title */
-  .profile-summary { margin-bottom: 1.125rem; padding-inline: 0.125rem; }
-  .profile-summary h1 { font-size: 2.125rem; line-height: 1.12; font-weight: 800; letter-spacing: -0.025em; }
-  .profile-line { margin-top: 0.375rem; font-size: 0.9375rem; }
-
-  .dashboard-grid { gap: 0.75rem; }
-
-  .panel {
-    padding: 1.125rem 1rem 1.25rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--line);
-    background: var(--surface);
-    box-shadow: var(--m-shadow);
-  }
-  .panel h2 { font-size: 1.1875rem; font-weight: 700; letter-spacing: -0.015em; }
-
-  /* Money sizes tuned for a 390pt screen */
-  .spending-amount { font-size: clamp(2.25rem, 11vw, 2.75rem); letter-spacing: -0.03em; }
-  .forecast-amount, .month-amount { font-size: 1.75rem; }
-
-  /* Inner tiles read as grouped cells */
-  .forecast-stage { margin-inline: -0.25rem; padding: 0.875rem 0.75rem; }
-  .forecast-graph { grid-template-rows: 9rem auto; }
-
-  /* Comfortable touch targets */
-  .panel summary, .spending-link, .secondary-button, .profile-retry, .tone-control select,
-  .chat-form input, .send-button, .risk-jump { min-height: 2.75rem; }
-  .panel summary { display: flex; align-items: center; }
-  .chat-form input { font-size: 1rem; } /* >=16px stops iOS zoom-on-focus */
-  .tone-control select { border-radius: var(--radius-pill, 999px); padding-inline: 0.875rem 0.625rem; }
-
-  /* Palette rule is flat colour only: drop the idle-money gradient on phones */
-  .deposit-ideas { background: var(--safe-surface); border-color: var(--line); }
-  .deposit-head { flex-wrap: wrap; row-gap: 0.25rem; }
-  input, select, textarea { font-size: max(1rem, 1em); }
-
-  /* ---------- Motion: staggered card entrance + pressed states ---------- */
-  .profile-summary { animation: m-rise 520ms var(--m-ease) both; }
-  .dashboard-grid > * { animation: m-rise 560ms var(--m-ease) both; }
-  .dashboard-grid > :nth-child(1) { animation-delay: 60ms; }
-  .dashboard-grid > :nth-child(2) { animation-delay: 120ms; }
-  .dashboard-grid > :nth-child(3) { animation-delay: 180ms; }
-  .dashboard-grid > :nth-child(4) { animation-delay: 240ms; }
-  .dashboard-grid > :nth-child(5) { animation-delay: 300ms; }
-  .dashboard-grid > :nth-child(n + 6) { animation-delay: 360ms; }
-
-  .spending-link, .secondary-button, .profile-retry, .risk-jump, .panel summary,
-  .pots-button, .chat-starter, .tt-chip, .send-button {
-    transition: transform var(--press), background-color var(--press), opacity var(--press);
-  }
-  :is(.spending-link, .secondary-button, .profile-retry, .risk-jump, .pots-button, .chat-starter, .tt-chip):active {
-    transform: scale(0.97);
-  }
-  .panel summary:active { opacity: 0.6; }
+  body { min-height: 100dvh; background: var(--c-page); overscroll-behavior-y: none; -webkit-font-smoothing: antialiased; }
+  .chat-form input, input, select, textarea { font-size: max(1rem, 1em); } /* >=16px stops iOS zoom-on-focus */
+  .spending-amount { font-size: clamp(2.5rem, 12vw, 3rem); }
 }
 
-/* Tapping a tab focuses the target section; Safari paints that as
-   focus-visible. On touch screens swap the hard ring for a soft pulse. */
+/* Tapping a tab focuses the target section; on touch screens skip the hard ring. */
 @media (max-width: 30rem) and (hover: none) and (pointer: coarse) {
-  :is(.panel, .app-shell)[tabindex="-1"]:focus-visible { outline: none; }
-  .panel[tabindex="-1"] { position: relative; }
-  .panel[tabindex="-1"]:focus-visible::after {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    pointer-events: none;
-    animation: m-arrive 1100ms var(--m-ease) both;
-  }
+  :is(.panel, .app-shell, h1)[tabindex="-1"]:focus-visible { outline: none; }
 }
 
-@keyframes m-arrive {
-  0% { box-shadow: 0 0 0 0 var(--c-accent, var(--tint)); }
-  25% { box-shadow: 0 0 0 3px var(--c-accent, var(--tint)); }
-  100% { box-shadow: 0 0 0 3px transparent; }
-}
-
-@keyframes m-rise {
-  from { opacity: 0; transform: translateY(14px) scale(0.985); }
-  to { opacity: 1; transform: none; }
-}
-
-@media (max-width: 23rem) {
-  .brand { font-size: 1.125rem; }
-  .persona-option span { min-width: 3.25rem; padding-inline: 0.5rem; }
-  .profile-summary h1 { font-size: 1.875rem; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile-summary, .dashboard-grid > *, .panel::after { animation: none !important; }
-  .section-nav a, .section-nav a::before { transition: none !important; }
-  .section-nav a:active,
-  :is(.spending-link, .secondary-button, .profile-retry, .risk-jump, .pots-button, .chat-starter, .tt-chip):active { transform: none !important; }
-}
-
-@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .app-header::before { background: var(--c-purple, var(--tint)); backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .section-nav { -webkit-backdrop-filter: none; }
-}
-
-/* Installed to the Home Screen (iOS 26+): the status-bar edge effect is
-   tinted from the document background, not theme-color. Make the document
-   background brand-purple and paint the grey page on #root instead, so the
-   status bar reads as part of the purple header. */
-@media (display-mode: standalone) and (max-width: 30rem) {
-  :root { background: var(--c-purple, var(--tint)); overscroll-behavior-y: none; }
-  body { background: transparent; }
-  #root { min-height: 100dvh; background: var(--c-page, var(--inset)); }
-  /* Clear the system's soft edge blur under the status bar */
-  .app-header { padding-top: calc(env(safe-area-inset-top) + 0.375rem); }
-}
-
-@media (display-mode: standalone) and (prefers-reduced-transparency: no-preference) {
-  .app-header::before { background: color-mix(in srgb, var(--c-purple, var(--tint)) 92%, transparent); }
-}
-
+/* Installed to the Home Screen: the status bar takes the document background, so make it the app-bar purple
+   and paint the grey page on #root instead. */
 @media (display-mode: standalone) {
+  :root { background: var(--c-deep); overscroll-behavior-y: none; }
+  body { background: transparent; }
+  #root { min-height: 100dvh; background: var(--c-page); }
   body { -webkit-user-select: none; user-select: none; }
   input, textarea, [contenteditable], .chat-answer, .chat-question { -webkit-user-select: text; user-select: text; }
 }

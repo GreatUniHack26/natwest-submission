@@ -19,9 +19,9 @@
 }
 
 .alarm[data-severity="high"] {
-  margin-block: 0.25rem;
-  padding: 0.875rem 1rem;
-  border: 1.5px solid var(--danger);
+  margin-block: 0.25rem 0.5rem;
+  padding: 1rem;
+  border: 0;
   border-radius: var(--radius);
   background: var(--danger-surface);
 }
@@ -36,13 +36,14 @@
 }
 
 .alarm-sev {
+  align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: 0.3125rem;
   padding: 0.1875rem 0.625rem;
   border-radius: var(--radius-pill, 999px);
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 800;
 }
 
 .alarm-sev svg { width: 0.875rem; height: 0.875rem; flex: none; }
@@ -57,15 +58,23 @@
 }
 
 .alarm-reason {
+  margin-top: 0.125rem;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.alarm-detail {
   color: var(--text);
   font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .alarm-action {
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   line-height: 1.5;
 }
 

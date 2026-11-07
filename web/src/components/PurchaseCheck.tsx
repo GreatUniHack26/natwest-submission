@@ -39,8 +39,8 @@ function PurchaseCheckForm({ userId }: { userId: string }) {
   }
 
   return (
-    <section id="coach" className="panel" tabIndex={-1} aria-labelledby="coach-title">
-      <h2 id="coach-title">Ask your coach</h2>
+    <section id="nat" className="panel" tabIndex={-1} aria-labelledby="coach-title">
+      <h2 id="coach-title">Ask Nat</h2>
       <p className="purchase-check-intro">
         Chat is currently unavailable. You can check a purchase against your live forecast.
       </p>

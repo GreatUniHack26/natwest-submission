@@ -177,3 +177,24 @@ export interface BenchmarkSummary {
 
 /** Text-coach reply shape: a one-line answer plus bullets, or fuller paragraphs. */
 export type Detail = "concise" | "detailed";
+
+/** "Money you might be owed": GET /users/{id}/entitlements. Information, never a promise. */
+export type EntitlementConfidence = "likely" | "worth checking";
+export interface Entitlement {
+  id: string;
+  title: string;
+  why_you: string; // plain-English evidence from the user's own data
+  est_value: number | null; // annual £, only where GOV.UK gives a defensible figure
+  confidence: EntitlementConfidence;
+  how_to_claim: string;
+  gov_url: string;
+  checker_url: string | null;
+  depends_on: string | null; // id of an item this needs first, e.g. "universal_credit"
+  last_checked: string;
+}
+export interface EntitlementSummary {
+  user_id: string;
+  items: Entitlement[];
+  total_est_value: number;
+  disclaimer: string;
+}

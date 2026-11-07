@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import { api, apiUrl } from "../api";
-import { dateLabel, gbp } from "../format";
-import type { Alert, SpendingForecast, TwinSimulations } from "../types";
-import CountUp from "./CountUp";
-import Icon from "./Icon";
+import { gbp } from "../format";
+import type { SpendingForecast, TwinSimulations } from "../types";
+import { loadAlarms, type NatAlarm } from "./NatAlarms";
+import { talkToNat } from "./NatLauncher";
+import Row, { Chip } from "./Row";
 
 interface Owed { total_est_value: number | null; items: unknown[] }
 
 const pct = (value: number) => `${Math.round(value * 100)}%`;
-const friendlyDates = (text: string) => text.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, (iso) => dateLabel(iso));
 
-/** The challenge, made visible: understand → anticipate → resilience → fairness, then the one alarm that matters now. */
+/** Nat's top alarm as one row, then the key numbers as list rows. */
 export default function ResilienceStrip({ userId }: { userId: string }) {
   const [month, setMonth] = useState<SpendingForecast | null>(null);
   const [sim, setSim] = useState<TwinSimulations | null>(null);
   const [owed, setOwed] = useState<Owed | null>(null);
-  const [alarm, setAlarm] = useState<Alert | null>(null);
+  const [alarm, setAlarm] = useState<NatAlarm | null>(null);
 
   useEffect(() => {
     const c = new AbortController();
@@ -24,70 +24,53 @@ export default function ResilienceStrip({ userId }: { userId: string }) {
     api.simulations(userId, c.signal).then(keep(setSim), () => {});
     fetch(apiUrl(`/users/${encodeURIComponent(userId)}/entitlements`), { signal: c.signal })
       .then((r) => (r.ok ? r.json() : null)).then(keep(setOwed), () => {});
-    api.alerts(userId, c.signal).then(keep((alerts: Alert[]) => {
-      const order = { high: 0, medium: 1, low: 2 } as const;
-      setAlarm([...alerts].sort((a, b) => order[a.severity] - order[b.severity])[0] ?? null);
+    loadAlarms(userId, c.signal).then(keep((alarms: NatAlarm[]) => {
+      setAlarm(alarms.find((a) => a.level === "act") ?? alarms.find((a) => a.level === "watch") ?? null);
     }), () => {});
     return () => c.abort();
   }, [userId]);
 
   const shortfall30 = sim?.chance_below_zero_within["30"];
-  const level = (v: number) => (v >= 0.5 ? "high" : v >= 0.2 ? "medium" : "low");
   const owedCount = owed?.items.length ?? 0;
+  const overBudget = month ? month.projected_month > month.typical_month * 1.1 : false;
+  const risk = shortfall30 === undefined ? null : shortfall30 >= 0.5 ? "bad" : shortfall30 >= 0.2 ? "warn" : "good";
 
   return (
-    <section className="resilience" aria-label="Your financial resilience at a glance">
+    <>
       {alarm && (
-        <div className="alarm-banner" data-severity={alarm.severity} role={alarm.severity === "high" ? "alert" : "status"}>
-          <span className="alarm-banner-icon" aria-hidden="true"><Icon name="alerts" /></span>
-          <div className="alarm-banner-copy">
-            <p className="alarm-banner-kicker">{alarm.severity === "high" ? "Needs attention now" : "Heads up"}</p>
-            <p className="alarm-banner-text">{friendlyDates(alarm.message)}</p>
-            {alarm.suggested_action && <p className="alarm-banner-action"><strong>Do this:</strong> {alarm.suggested_action}</p>}
-          </div>
-          <a className="alarm-banner-cta" href="#coach">Ask Nat <Icon name="chevron" /></a>
+        <div className="block nat-alert" role={alarm.level === "act" ? "alert" : "status"}>
+          <Row avatar="N" title={alarm.title} subtitle="Tap to talk it through" onClick={talkToNat} />
         </div>
       )}
-
-      <ul className="resilience-tiles">
-        <li>
-          <a href="#forecast" className="r-tile" data-level={month ? (month.projected_month > month.typical_month * 1.1 ? "medium" : "low") : undefined}>
-            <span className="r-kicker">Budget · this month</span>
-            <span className="r-value money" aria-label={month ? gbp(Math.round(month.projected_month)) : "loading"}>
-              {month ? <CountUp value={Math.round(month.projected_month)} /> : "…"}
-            </span>
-            <span className="r-label">{month ? `heading for, usually ${gbp(Math.round(month.typical_month))}` : "everyday spending this month"}</span>
-          </a>
-        </li>
-        <li>
-          <a href="#forecast" className="r-tile" data-level={shortfall30 !== undefined ? level(shortfall30) : undefined}>
-            <span className="r-kicker">Time travel · next 30 days</span>
-            <span className="r-value">{shortfall30 !== undefined ? pct(shortfall30) : "…"}</span>
-            <span className="r-label">
-              chance of a shortfall{sim?.coin_flip_date ? `; likely from ${dateLabel(sim.coin_flip_date)}` : ""}
-            </span>
-          </a>
-        </li>
-        <li>
-          <a href="#forecast" className="r-tile">
-            <span className="r-kicker">Resilience · runway</span>
-            <span className="r-value">{sim ? `${sim.runway_days_if_income_stops}${sim.runway_capped ? "+" : ""}` : "…"}<small> days</small></span>
-            <span className="r-label">if your pay stopped today, without touching pots</span>
-          </a>
-        </li>
-        <li>
-          <a href="#tips" className="r-tile" data-level={owedCount ? "good" : undefined}>
-            <span className="r-kicker">Fairness · money you might be owed</span>
-            <span className="r-value money">
-              {owed === null ? "…" : owed.total_est_value ? <>up to {gbp(Math.round(owed.total_est_value))}</> : owedCount ? `${owedCount} to check` : "None found"}
-            </span>
-            <span className="r-label">{owedCount ? `${owedCount} scheme${owedCount > 1 ? "s" : ""} from GOV.UK to check` : "we keep checking GOV.UK schemes"}</span>
-          </a>
-        </li>
-      </ul>
-      <p className="r-footnote">
-        <Icon name="forecast" /> Every number comes from your own transactions and {sim?.simulations?.toLocaleString("en-GB") ?? "1,000"} simulated futures, never guessed by AI. Tap any figure to see how it’s worked out.
-      </p>
-    </section>
+      <section className="sect" aria-labelledby="glance-h">
+        <div className="sect-head"><h2 id="glance-h">At a glance</h2></div>
+        <ul className="rows block">
+          <li>
+            <Row icon="shopping-cart" title="Spending this month"
+              subtitle={month ? `Usually ${gbp(Math.round(month.typical_month))}` : "Working it out"}
+              value={month ? gbp(Math.round(month.projected_month)) : "…"}
+              chip={month ? <Chip tone={overBudget ? "warn" : "good"}>{overBudget ? "High" : "On track"}</Chip> : undefined}
+              href="#month" />
+          </li>
+          <li>
+            <Row icon="umbrella" title="Chance of running short" subtitle="In the next 30 days"
+              value={shortfall30 !== undefined ? pct(shortfall30) : "…"}
+              chip={risk ? <Chip tone={risk}>{risk === "bad" ? "High" : risk === "warn" ? "Some" : "Low"}</Chip> : undefined}
+              href="#forecast" />
+          </li>
+          <li>
+            <Row icon="hourglass-medium" title="If your pay stopped" subtitle="How long your money lasts, not using pots"
+              value={sim ? `${sim.runway_days_if_income_stops}${sim.runway_capped ? "+" : ""} days` : "…"}
+              href="#forecast" />
+          </li>
+          <li>
+            <Row icon="hand-coins" title="Money you could get"
+              subtitle={owedCount ? `${owedCount} ${owedCount > 1 ? "things" : "thing"} to check` : "We keep checking for you"}
+              value={owed?.total_est_value ? `£${Math.round(owed.total_est_value).toLocaleString("en-GB")}` : undefined}
+              href="#tips" />
+          </li>
+        </ul>
+      </section>
+    </>
   );
 }

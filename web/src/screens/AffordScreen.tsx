@@ -35,7 +35,7 @@ type VState =
 
 export default function AffordScreen({ userId, onAskCoach }: {
   userId: string;
-  /** Optional: open the coach with a prefilled question. The button is hidden when not given. */
+  /** Optional: open Nat with a prefilled question. The button is hidden when not given. */
   onAskCoach?: (message: string) => void;
 }) {
   const today = todayIso();
@@ -115,7 +115,7 @@ export default function AffordScreen({ userId, onAskCoach }: {
             {onAskCoach && (
               <button type="button" className="fts-btn fts-btn--ghost"
                 onClick={() => onAskCoach(`Can I afford ${money(amountValid ? amount : 0, amount % 1 ? 2 : 0)} for ${label}?`)}>
-                <Icon name="chat-circle-text" />Talk it through with the coach
+                <Icon name="chat-circle-text" />Talk it through with Nat
               </button>
             )}
           </section>

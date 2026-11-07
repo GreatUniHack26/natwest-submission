@@ -50,8 +50,8 @@ export default function AccessibilityMenu() {
           <label><input type="checkbox" checked={prefs.large} onChange={() => toggle("large")} /> Larger text</label>
           <label><input type="checkbox" checked={prefs.contrast} onChange={() => toggle("contrast")} /> Stronger contrast</label>
           <label><input type="checkbox" checked={prefs.calm} onChange={() => toggle("calm")} /> Calmer screen (less motion)</label>
-          <a className="a11y-link" href="#coach" onClick={() => setOpen(false)}>Prefer talking? Speak to your coach</a>
-          <p className="a11y-note">Choose “Simple English” in the coach for plain words.</p>
+          <a className="a11y-link" href="#nat" onClick={() => setOpen(false)}>Prefer talking? Talk to Nat</a>
+          <p className="a11y-note">Ask Nat to use “Simple” words if you prefer.</p>
         </div>
       )}
     </div>

@@ -48,9 +48,9 @@ function errorText(error: unknown): string {
       const detail = (JSON.parse(raw) as { detail?: unknown }).detail;
       if (typeof detail === "string") return detail;
     } catch { /* not JSON */ }
-    return error.status === 503 ? "The live voice coach is unavailable right now." : "Couldn’t start the voice coach.";
+    return error.status === 503 ? "Talking to Nat isn’t available right now." : "Couldn’t start talking to Nat.";
   }
-  return error instanceof Error && error.message ? error.message : "Couldn’t start the voice coach.";
+  return error instanceof Error && error.message ? error.message : "Couldn’t start talking to Nat.";
 }
 
 function median(values: number[]) {
@@ -177,6 +177,16 @@ export default function VoiceCoach({ userId, tone }: { userId: string; tone: Ton
     }
   }, [addLine, tone, userId]);
 
+  // Floating mic / Nat's notification ask for a live chat: start as soon as this panel mounts.
+  useEffect(() => {
+    let wanted = false;
+    try { wanted = sessionStorage.getItem("nat-autostart") === "1"; sessionStorage.removeItem("nat-autostart"); } catch { /* ignore */ }
+    if (wanted) void start();
+    const onTalk = () => { if (!conversation.current) void start(); };
+    window.addEventListener("nat:talk", onTalk);
+    return () => window.removeEventListener("nat:talk", onTalk);
+  }, [start]);
+
   // End the call when the persona changes or the panel unmounts.
   useEffect(() => () => {
     window.clearTimeout(interruptTimer.current);
@@ -246,7 +256,7 @@ export default function VoiceCoach({ userId, tone }: { userId: string; tone: Ton
         <ol className="voice-transcript" ref={log} role="log" aria-label="Voice conversation transcript">
           {lines.map((line) => (
             <li key={line.id} className="voice-line" data-role={line.role}>
-              <span className="voice-line-who">{line.role === "user" ? "You" : "Coach"}</span>
+              <span className="voice-line-who">{line.role === "user" ? "You" : "Nat"}</span>
               <span dir="auto">{line.text}</span>
               {line.interrupted && <span className="voice-line-cut">(cut off)</span>}
             </li>

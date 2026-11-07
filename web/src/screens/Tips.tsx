@@ -1,8 +1,8 @@
 // "Tips and benchmarks": GET /users/{id}/tips and GET /users/{id}/benchmarks.
 // Benchmarks are ONS averages (no spread is published), so we show averages, never a "usual range".
 import { useState, type ReactNode } from "react";
-import { api, screensApi } from "../api";
-import type { BenchmarkComparison, BenchmarkSummary, Tip, User } from "../types";
+import { api, entitlementsApi, screensApi } from "../api";
+import type { BenchmarkComparison, BenchmarkSummary, Entitlement, EntitlementSummary, Tip, User } from "../types";
 import {
   CalcLink, CalcPanel, cap, DISCLAIMER, Icon, Missing, money, StateSwitch, useLoad, type CalcContent,
 } from "./shared";
@@ -25,6 +25,7 @@ export default function Tips({ userId }: { userId: string }) {
   const [tipsState, retryTips] = useLoad<Tip[]>((s) => screensApi.tips(userId, s), [userId]);
   const [benchState, retryBench] = useLoad<BenchmarkSummary>((s) => screensApi.benchmarks(userId, undefined, s), [userId],
     { isMissing: (b) => !b.comparable || b.comparisons.length === 0 });
+  const [owedState, retryOwed] = useLoad<EntitlementSummary>((s) => entitlementsApi.get(userId, s), [userId]);
   const [calc, setCalc] = useState<CalcContent | null>(null);
 
   const user = userState.status === "ok" ? userState.data : null;
@@ -41,6 +42,35 @@ export default function Tips({ userId }: { userId: string }) {
             Savings are estimates based on your own spending.
           </p>
         </div>
+
+        <section className="fts-card ftp-owed" aria-labelledby="ftp-owed-h">
+          <div className="ftp-owed-head">
+            <span className="fts-bubble"><Icon name="hand-coins" /></span>
+            <div className="ftp-owed-title">
+              <h2 id="ftp-owed-h">Money you might be owed</h2>
+              <p>Help you may be able to claim, based on your own income and bills.</p>
+            </div>
+            {owedState.status === "ok" && <OwedTotal s={owedState.data} />}
+          </div>
+          <StateSwitch state={owedState} onRetry={retryOwed} loadingLabel="Checking what you might be owed" rows={4}>
+            {(s) => s.items.length === 0 ? (
+              <div className="ftp-empty ftp-owed-empty">
+                <span className="fts-bubble"><Icon name="magnifying-glass" /></span>
+                <strong>Nothing found from your data right now. We'll keep checking.</strong>
+              </div>
+            ) : (
+              <>
+                <div className="ftp-owed-list">
+                  {s.items.map((e) => <OwedCard key={e.id} e={e} items={s.items} />)}
+                </div>
+                <div className="ftp-owed-foot">
+                  <CalcLink onClick={() => setCalc(owedCalc(s))} />
+                  <p className="fts-fine">{s.disclaimer.replace(DISCLAIMER, "").trim()}</p>
+                </div>
+              </>
+            )}
+          </StateSwitch>
+        </section>
 
         <StateSwitch state={tipsState} onRetry={retryTips} loadingLabel="Loading tips" rows={4}>
           {(tips) => tips.length === 0 ? (
@@ -86,6 +116,90 @@ export default function Tips({ userId }: { userId: string }) {
       {calc && <CalcPanel content={calc} onClose={() => setCalc(null)} />}
     </div>
   );
+}
+
+function OwedTotal({ s }: { s: EntitlementSummary }) {
+  const likely = s.items.filter((e) => e.confidence === "likely").length;
+  if (s.items.length === 0) return null;
+  return (
+    <div className="ftp-owed-total">
+      {s.total_est_value > 0 ? (
+        <>
+          <span className="ftp-owed-total-l">Up to</span>
+          <strong className="fts-money">{money(s.total_est_value)}</strong>
+          <span className="ftp-owed-total-l">a year</span>
+        </>
+      ) : (
+        <strong className="fts-money">{s.items.length} to check</strong>
+      )}
+      <span className="ftp-owed-count">
+        {s.items.length} found{likely ? `, ${likely} likely` : ""}
+      </span>
+    </div>
+  );
+}
+
+function OwedCard({ e, items }: { e: Entitlement; items: Entitlement[] }) {
+  const likely = e.confidence === "likely";
+  const needs = e.depends_on ? items.find((i) => i.id === e.depends_on)?.title ?? cap(e.depends_on.replace(/_/g, " ")) : null;
+  const showChecker = e.checker_url && e.checker_url !== e.gov_url;
+  return (
+    <article className="ftp-owed-card">
+      <div className="ftp-owed-top">
+        <h3>{e.title}</h3>
+        <span className={`fts-chip ${likely ? "fts-chip--success-outline" : "fts-chip--lav"}`}>
+          <Icon name={likely ? "check-circle" : "magnifying-glass"} />{likely ? "Likely" : "Worth checking"}
+        </span>
+      </div>
+      <p className="ftp-owed-value">
+        {e.est_value ? (
+          <><Icon name="coins" />About <strong className="fts-money">{money(e.est_value)}</strong> a year</>
+        ) : (
+          <><Icon name="info" />The amount depends on your circumstances</>
+        )}
+      </p>
+      <div className="ftp-owed-why">
+        <span className="ftp-owed-label">Why you</span>
+        <p>{e.why_you}</p>
+      </div>
+      {needs && (
+        <p className="ftp-owed-needs"><Icon name="link-simple" />Needs {needs} first</p>
+      )}
+      <div className="ftp-owed-why">
+        <span className="ftp-owed-label">How to claim</span>
+        <p>{e.how_to_claim}</p>
+      </div>
+      <div className="ftp-owed-links">
+        <a className="ftp-source" href={e.gov_url} target="_blank" rel="noreferrer">
+          <Icon name="arrow-square-out" />Official GOV.UK guidance<span className="fts-visually-hidden"> (opens in a new tab)</span>
+        </a>
+        {showChecker && (
+          <a className="ftp-source" href={e.checker_url!} target="_blank" rel="noreferrer">
+            <Icon name="list-checks" />Check if you can get it<span className="fts-visually-hidden"> (opens in a new tab)</span>
+          </a>
+        )}
+      </div>
+      <div className="ftp-foot">
+        <span className="ftp-disclaimer">{DISCLAIMER}</span>
+      </div>
+    </article>
+  );
+}
+
+function owedCalc(s: EntitlementSummary): CalcContent {
+  const checked = s.items[0]?.last_checked ?? "";
+  return {
+    title: "How we find money you might be owed",
+    steps: [
+      "We look at your income, your bills and who you live with.",
+      "We check that against the rules for each scheme on GOV.UK. We only show a scheme when your own data points to it.",
+      "Likely means your data fits the main rules. Worth checking means it might fit, or you need to claim something else first.",
+      "Amounts use GOV.UK rates. If the amount depends on things we can't see, we don't show a number.",
+      "The total adds up the amounts we could work out. It's a rough guide, not a promise.",
+    ],
+    sources: <>GOV.UK guidance and rates{checked ? <>, checked {checked}</> : null}, and your NatWest transactions.</>,
+    unknown: "Your age, any savings held elsewhere, your immigration status, and whether you already claim. The official checker asks about these.",
+  };
 }
 
 function TipCard({ tip, onCalc }: { tip: Tip; onCalc: () => void }) {

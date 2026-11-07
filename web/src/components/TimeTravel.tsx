@@ -15,9 +15,9 @@ function addDays(iso: string, days: number) {
 
 interface Preset { id: string; label: string; overrides: Record<string, unknown> }
 const PRESETS: Preset[] = [
-  { id: "trip", label: "Holiday £1,600 in 4 weeks", overrides: { extra_one_off: { amount: 1600, date: addDays(DEMO_TODAY, 28) } } },
-  { id: "cut", label: "Hours cut by 30%", overrides: { income_multiplier: 0.7 } },
-  { id: "bill", label: "New £100/month bill", overrides: { extra_monthly_cost: 100 } },
+  { id: "trip", label: "£1,600 holiday in 4 weeks", overrides: { extra_one_off: { amount: 1600, date: addDays(DEMO_TODAY, 28) } } },
+  { id: "cut", label: "Pay cut by 30%", overrides: { income_multiplier: 0.7 } },
+  { id: "bill", label: "New £100 monthly bill", overrides: { extra_monthly_cost: 100 } },
 ];
 
 const money = (v: number) => gbp(Math.round(v));
@@ -91,8 +91,8 @@ export default function TimeTravel({ userId, revision = 0, compact = false }: { 
     return map;
   }, [data]);
 
-  if (failed && !data) return <p className="panel-empty">Couldn’t run the time-travel simulation.</p>;
-  if (!data || !geo) return <div className="panel-loading" role="status"><span>Simulating your next 90 days…</span><span className="skeleton" /></div>;
+  if (failed && !data) return <p className="panel-empty">Couldn’t load your forecast. Try again in a moment.</p>;
+  if (!data || !geo) return <div className="panel-loading" role="status"><span>Working out your next 90 days…</span><span className="skeleton" /></div>;
 
   const day = data.days[Math.min(cursor, data.days.length - 1)];
   const sinceToday = data.events.filter((e) => e.date > data.days[0].date && e.date <= day.date && e.kind !== "pot");
@@ -120,24 +120,24 @@ export default function TimeTravel({ userId, revision = 0, compact = false }: { 
     <div className="tt" data-compact={compact}>
       <div className="tt-story" aria-live="polite">
         <div>
-          <p className="tt-date"><time dateTime={day.date}>{dateLabel(day.date)}</time>{cursor === 0 ? " · today" : ` · in ${cursor} days`}</p>
+          <p className="tt-date"><time dateTime={day.date}>{dateLabel(day.date)}</time>{cursor === 0 ? ", today" : `, in ${cursor} days`}</p>
           <p className="tt-amount money" data-negative={day.p50 < 0}>{money(day.p50)}</p>
-          <p className="tt-range">8 in 10 futures: {money(day.p10)} to {money(day.p90)}</p>
+          <p className="tt-range">Likely between {money(day.p10)} and {money(day.p90)}</p>
         </div>
         <div className="tt-facts">
           <p className="tt-chance" data-level={day.chance_below_zero >= 0.5 ? "high" : day.chance_below_zero >= 0.2 ? "medium" : "low"}>
-            <strong>{pct(day.chance_below_zero)}</strong> chance below £0
+            <strong>{pct(day.chance_below_zero)}</strong> chance you’re below £0
           </p>
-          {usingPots && <p className="tt-flag">Likely dipping into pot money</p>}
+          {usingPots && <p className="tt-flag">You may need your pot money</p>}
           {scenarioValue !== undefined && preset && (
-            <p className="tt-what-if-value">What-if: <strong className="money">{money(scenarioValue)}</strong></p>
+            <p className="tt-what-if-value">With your change: <strong className="money">{money(scenarioValue)}</strong></p>
           )}
           <p className="tt-since">
-            Since today: <span className="tt-in">+{money(paidIn)}</span> pay, <span className="tt-out">{money(paidOut)}</span> bills
+            From today: <span className="tt-in">{money(paidIn)} in</span>, <span className="tt-out">{money(Math.abs(paidOut))} out</span>
           </p>
           {todays.length > 0
-            ? <p className="tt-today">{todays.map((e) => `${e.label} ${e.amount > 0 ? "+" : ""}${money(e.amount)}`).join(" · ")}</p>
-            : nextEvent && <p className="tt-next">Next: {nextEvent.label} {dateLabel(nextEvent.date)}</p>}
+            ? <p className="tt-today">{todays.map((e) => `${e.label} ${e.amount > 0 ? "+" : ""}${money(e.amount)}`).join(", ")}</p>
+            : nextEvent && <p className="tt-next">Next: {nextEvent.label} on {dateLabel(nextEvent.date)}</p>}
         </div>
       </div>
 
@@ -198,16 +198,16 @@ export default function TimeTravel({ userId, revision = 0, compact = false }: { 
 
       <ul className="tt-legend" aria-label="Chart legend">
         <li><i className="lg-median" />Most likely</li>
-        <li><i className="lg-fan" />8 in 10 futures</li>
-        <li><i className="lg-pots" />Protected in pots</li>
+        <li><i className="lg-fan" />Likely range</li>
+        <li><i className="lg-pots" />Kept in pots</li>
         <li><i className="lg-income" />Pay</li>
         <li><i className="lg-bill" />Bill</li>
-        {preset && <li><i className="lg-scenario" />What-if</li>}
+        {preset && <li><i className="lg-scenario" />Your change</li>}
       </ul>
 
       {!compact && <div className="tt-whatif">
-        <p className="tt-whatif-title">Change the future</p>
-        <div className="tt-chips" role="group" aria-label="What-if scenarios">
+        <p className="tt-whatif-title">What if…</p>
+        <div className="tt-chips" role="group" aria-label="What if">
           {PRESETS.map((p) => (
             <button key={p.id} type="button" className="tt-chip" aria-pressed={preset?.id === p.id}
               onClick={() => setPreset(preset?.id === p.id ? null : p)}>{p.label}</button>
@@ -224,9 +224,9 @@ export default function TimeTravel({ userId, revision = 0, compact = false }: { 
           <p className="tt-whatif-result" role="status">
             <strong>{preset.label}:</strong>{" "}
             {data.scenario.first_below_zero
-              ? <>below £0 from <strong>{dateLabel(data.scenario.first_below_zero)}</strong>{data.first_below_zero && data.first_below_zero !== data.scenario.first_below_zero ? ` (was ${dateLabel(data.first_below_zero)})` : ""}</>
-              : "you stay above £0 in the expected path"}
-            {" · "}ends {money(Math.abs(data.scenario.end_difference))} {data.scenario.end_difference < 0 ? "lower" : "higher"}.
+              ? <>you’d go below £0 from <strong>{dateLabel(data.scenario.first_below_zero)}</strong>{data.first_below_zero && data.first_below_zero !== data.scenario.first_below_zero ? ` (was ${dateLabel(data.first_below_zero)})` : ""}</>
+              : "you’d most likely stay above £0"}
+            . You’d end {money(Math.abs(data.scenario.end_difference))} {data.scenario.end_difference < 0 ? "lower" : "higher"}.
             <button type="button" className="tt-clear" onClick={() => setPreset(null)}>Clear</button>
           </p>
         )}

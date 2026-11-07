@@ -99,3 +99,9 @@ export const screensApi = {
     http<import("./types").BenchmarkSummary>(
       `${userPath(uid)}/benchmarks${householdSize ? `?household_size=${householdSize}` : ""}`, { signal }),
 };
+
+/** "Money you might be owed": schemes, exemptions and reliefs the user's data suggests they may be missing. */
+export const entitlementsApi = {
+  get: (uid: string, signal?: AbortSignal) =>
+    http<import("./types").EntitlementSummary>(`${userPath(uid)}/entitlements`, { signal }),
+};
