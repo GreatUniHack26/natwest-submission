@@ -46,3 +46,6 @@ def detect_alerts(user_id: str) -> list[Alert]:
     from .alerts import find_alerts
 
     return find_alerts(user_id)
+
+
+from .sales import upcoming_sales
