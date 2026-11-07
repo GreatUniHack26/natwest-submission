@@ -15,6 +15,7 @@ from .baseline import weekday_baseline
 from .inputs import Inputs, load_inputs
 from .money import pence, pounds
 from .recurring import amount_std, occurrences, patterns
+from .reservations import bill_schedule, protected_on
 
 
 def validate_horizon(horizon: int) -> None:
@@ -64,14 +65,15 @@ def project(data: Inputs, horizon_days: int) -> list[ForecastPoint]:
 
 
 def response(data: Inputs, daily: list[ForecastPoint], horizon_days: int) -> Forecast:
-    protected = {p.date: protected_total(data.pots, p.date) for p in daily}
+    bills = bill_schedule([item for item, _ in patterns(data.transactions)], data.as_of + dt.timedelta(days=1), daily[-1].date)
+    protected = {p.date: protected_on(data.pots, bills, p.date) for p in daily}
     assumptions = [
         f'Opening balance £{pounds(data.balance):.2f} is the repository balance at close of {data.as_of}.',
-        'History covers the preceding 84 days; days without recorded spending count as zero. Sparse history may understate spending.',
+        'Recurrences use up to 180 days; everyday spending uses the preceding 84 days; days without recorded spending count as zero. Sparse history may understate spending.',
         'Recurring observations and positive transactions are excluded from everyday spending; refunds do not predict future income.',
         'Monthly schedules preserve calendar dates; variable income uses its historical mean and observed variability.',
         'Low/high bands are expected balance plus/minus one accumulated standard deviation; daily and payment variances are independent.',
-        'Pots reserve existing money, not additional cash flows; dated reservations remain protected through their due date.',
+        'Pots reserve existing money through their due date. A dated pot funds a bill only with the exact same merchant name and payment date; that allocation is consumed when paid.',
     ]
     if not data.transactions:
         assumptions.append('No historical transactions: future income and spending are unknown, not proven zero.')

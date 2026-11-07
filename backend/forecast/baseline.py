@@ -27,7 +27,7 @@ def history(transactions: list[Transaction], as_of: dt.date) -> list[Transaction
 
 def everyday(transactions: list[Transaction], as_of: dt.date) -> list[Transaction]:
     data = history(transactions, as_of)
-    excluded = recurring_ids(data)
+    excluded = recurring_ids([t for t in transactions if as_of - dt.timedelta(days=180) <= t.date < as_of])
     return [t for t in data if t.amount < 0 and t.kind != 'income' and t.id not in excluded]
 
 
@@ -35,7 +35,7 @@ def weekday_baseline(transactions: list[Transaction], as_of: dt.date | None = No
     as_of = as_of or config.TODAY
     data = history(transactions, as_of)
     totals = defaultdict(int)
-    for tx in everyday(data, as_of):
+    for tx in everyday(transactions, as_of):
         totals[tx.date] += -pence(tx.amount)
     samples = defaultdict(list)
     for offset in range(1, LOOKBACK_DAYS + 1):
