@@ -40,7 +40,7 @@ TOOL_FAILURE_APOLOGY = (
     "because a tool check failed. I won't guess or invent numbers—please try again shortly."
 )
 LLM_UNAVAILABLE_APOLOGY = (
-    "Sorry, the financial coach service is temporarily unavailable. "
+    "Sorry, Nat is unavailable right now. "
     "I won't guess at your numbers—please try again in a moment."
 )
 MAX_ROUNDS_APOLOGY = (

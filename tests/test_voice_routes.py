@@ -81,7 +81,7 @@ def test_creates_agent_with_low_latency_config_and_client_tools(client, monkeypa
     assert r.json()["agent_id"] == "agent_new"
     create = next(body for m, p, body in fake.calls if p == "/v1/convai/agents/create")
     conv = create["conversation_config"]
-    assert create["name"] == "FinTime Coach"
+    assert create["name"] == "Nat"
     assert conv["agent"]["prompt"]["llm"] == convai.LLM_MODEL
     assert conv["tts"]["model_id"] == convai.TTS_MODEL
     assert "interruption" in conv["conversation"]["client_events"]
@@ -116,7 +116,7 @@ def test_second_session_reuses_cached_agent_without_resyncing(client, monkeypatc
 
 def test_existing_remote_agent_is_found_and_patched_not_duplicated(client, monkeypatch):
     fake = install(monkeypatch, FakeElevenLabs(
-        agents=[{"agent_id": "agent_old", "name": "FinTime Coach", "archived": False}],
+        agents=[{"agent_id": "agent_old", "name": "Nat", "archived": False}],
         tools_listing=[{"id": "tool_existing", "tool_config": {"type": "client", "name": "get_alerts"}}],
     ))
 
@@ -135,7 +135,7 @@ def test_session_payload_carries_prompt_with_context_and_personal_first_message(
     body = client.get("/users/sam/voice/session?tone=direct").json()
 
     assert body["signed_url"].startswith("wss://")
-    assert "You are FinTime" in body["prompt"]
+    assert "You are Nat" in body["prompt"]
     assert "Tone:" in body["prompt"]
     assert LIVE_CONTEXT in body["prompt"]
     assert "## Voice mode" in body["prompt"]

@@ -260,7 +260,7 @@ def test_missing_tone_uses_users_saved_tone_and_supports_all_tones(monkeypatch):
 
     orchestrator.run_chat("sam", "How much can I spend?", tone=None)
     assert len(captured_prompts) == 1
-    assert "You are FinTime" in captured_prompts[0]
+    assert "You are Nat" in captured_prompts[0]
     assert "reading age ~9" in captured_prompts[0]
 
     # Verify all three tones build distinct prompts containing base.md + tone_<tone>.md

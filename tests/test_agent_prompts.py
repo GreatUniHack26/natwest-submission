@@ -58,7 +58,7 @@ def test_base_prompt_contains_all_responsible_ai_guardrails():
     lower = base_text.lower()
 
     # Exact substrings required by existing and current tests
-    assert "You are FinTime" in base_text
+    assert "You are Nat" in base_text
     assert "Never do arithmetic yourself" in base_text
 
     # State numbers used and explain why
@@ -104,7 +104,7 @@ def test_tone_files_and_build_system_prompt():
         assert phrase in tone_content
 
         full_prompt = orchestrator.build_system_prompt(tone)
-        assert "You are FinTime" in full_prompt
+        assert "You are Nat" in full_prompt
         assert "Never do arithmetic yourself" in full_prompt
         assert phrase in full_prompt
         built_prompts[tone] = full_prompt

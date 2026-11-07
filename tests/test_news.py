@@ -282,6 +282,7 @@ def test_setup_script_creates_or_updates_and_activates(tmp_path, monkeypatch, ca
     assert env.read_text().splitlines() == [
         "LLM_API_KEY=keep-me", "N8N_BASE_URL=http://n8n.test:5678/", "N8N_API_KEY='secret-key'",
         "N8N_NEWS_WEBHOOK_URL=http://n8n.test:5678/webhook/fintime-news", "MOCK_DATA=1",
+        "N8N_GOVUK_WEBHOOK_URL=http://n8n.test:5678/webhook/fintime-govuk",
     ]
 
 

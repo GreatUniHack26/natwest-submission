@@ -155,7 +155,7 @@ STOPWORDS = {
 }
 
 _TAG_TOKEN_RE = re.compile(r"<(/?)([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>|<!--.*?-->|([^<]+)", re.S)
-_CTRL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f­​-‏ -‮⁠-⁩﻿]")
+_CTRL_RE = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u00ad\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]")
 _WS_RE = re.compile(r"\s+")
 _WORD_RE = re.compile(r"[a-z0-9]+")
 _MONEY_RE = re.compile(r"£\s?\d|\d\s?%|\bper cent\b", re.I)
@@ -505,13 +505,15 @@ def select_excerpts(
             heading_hits = sum(1 for t in terms if _has_term(block.get("heading", "").lower(), t))
             score = 3.0 * hits + 1.0 * heading_hits + part_bonus
             if _MONEY_RE.search(text):
-                score += 2.0 + (3.0 if block.get("group") == "table" else 0.0)
+                score += 2.0 + (4.0 if block.get("group") == "table" else 0.0)
+            if re.search(r"\bcurrent\b|\bthis tax year\b", f"{block.get('heading', '')} {lower[:80]}", re.I):
+                score += 2.0
             elif re.search(r"\d", text):
                 score += 0.5
             if "welsh (cymraeg)" in lower or "@" in text:
                 score -= 5
             if _OLD_RE.search(f"{title_l} {block.get('heading', '')} {lower[:80]}"):
-                score -= 4  # previous years' rates are rarely what the user wants
+                score -= 8  # previous years' rates are rarely what the user wants
             scored.append((score, order, text, slug))
     if not scored:
         return [], ""

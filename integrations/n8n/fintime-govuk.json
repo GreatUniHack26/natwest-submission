@@ -1,0 +1,216 @@
+{
+  "name": "FinTime GOV.UK",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fintime-govuk",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c4d2e1f0-0001-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "8d1e6f2a-4b7c-4e9d-a3f5-1c2b3d4e5f60"
+    },
+    {
+      "parameters": {
+        "url": "https://www.gov.uk/api/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ String($json.body.query || '').slice(0, 200) }}"
+            },
+            {
+              "name": "count",
+              "value": "10"
+            },
+            {
+              "name": "fields",
+              "value": "title,description,link,format,public_timestamp,content_store_document_type"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "FinTime-hackathon/1.0 (financial coach; GOV.UK guidance lookup)"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "c4d2e1f0-0002-4000-8000-000000000002",
+      "name": "GOV.UK Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const SITE = 'https://www.gov.uk';\nconst STOPWORDS = new Set([\"a\", \"about\", \"am\", \"an\", \"and\", \"any\", \"are\", \"as\", \"at\", \"be\", \"but\", \"by\", \"can\", \"do\", \"does\", \"for\", \"from\", \"get\", \"gov\", \"has\", \"have\", \"help\", \"how\", \"i\", \"if\", \"in\", \"into\", \"is\", \"it\", \"many\", \"me\", \"much\", \"my\", \"need\", \"not\", \"of\", \"on\", \"or\", \"our\", \"out\", \"pay\", \"per\", \"rate\", \"rates\", \"should\", \"that\", \"the\", \"their\", \"them\", \"there\", \"they\", \"this\", \"to\", \"uk\", \"we\", \"what\", \"when\", \"who\", \"will\", \"with\", \"you\", \"your\"]);\nconst CTRL_RE = /[\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\u00ad\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]/g;\nconst ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '\"', apos: \"'\", nbsp: ' ', pound: '£', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”', hellip: '…' };\nfunction unescapeHtml(s) {\n  return s.replace(/&(#x[0-9a-f]+|#\\d+|[a-z]+);/gi, (m, e) => {\n    if (e[0] === '#') {\n      const code = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);\n      return Number.isFinite(code) && code > 0 && code < 0x110000 ? String.fromCodePoint(code) : ' ';\n    }\n    return ENTITIES[e.toLowerCase()] ?? m;\n  });\n}\nfunction cleanText(value, maxLen) {\n  if (value === null || value === undefined) return '';\n  let t = String(value).replace(/<[^>]*>/g, ' ');\n  t = unescapeHtml(t).replace(/<[^>]*>/g, ' ').replace(CTRL_RE, ' ').replace(/\\s+/g, ' ').trim();\n  if (t.length > maxLen) {\n    const head = t.slice(0, maxLen - 1);\n    const cut = head.includes(' ') ? head.slice(0, head.lastIndexOf(' ')) : head;\n    t = cut.replace(/[ ,.;:|]+$/, '') + '…';\n  }\n  return t;\n}\nfunction normaliseQuery(q) {\n  return (cleanText(q, 200).toLowerCase().replace(/-/g, ' ').match(/[a-z0-9]+/g) || []).join(' ');\n}\nfunction queryTerms(q) {\n  const out = [];\n  for (const w of normaliseQuery(q).split(' ')) {\n    if (!w || STOPWORDS.has(w) || w.length < 3) continue;\n    const stem = w.slice(0, 5);\n    if (!out.includes(stem)) out.push(stem);\n  }\n  return out;\n}\nfunction escapeRe(s) { return s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'); }\nfunction hasTerm(lower, term) { return new RegExp('\\\\b' + escapeRe(term)).test(lower); }\nfunction safePath(link) {\n  if (typeof link !== 'string') return '';\n  let p = link.trim();\n  if (p.startsWith(SITE)) p = p.slice(SITE.length);\n  return /^\\/[A-Za-z0-9\\/_\\-.]{0,300}$/.test(p) && !p.includes('//') && !p.includes('..') ? p : '';\n}\nfunction isoDate(v) {\n  if (typeof v !== 'string' || !v) return '';\n  const d = new Date(v);\n  return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);\n}\n\n// Pick GOV.UK pages for the query: curated KEY_PAGES matches first, then relevant search results\n// (citizen guidance before other formats; news/consultations only if nothing else matches).\nconst body = $('Webhook').first().json.body || {};\nconst query = cleanText(typeof body.query === 'string' ? body.query : '', 200);\nconst maxPages = Math.max(1, Math.min(parseInt(body.max_pages, 10) || 3, 5));\nconst KEY_PAGES = {\n  \"income tax rates\": {\n    \"path\": \"/income-tax-rates\",\n    \"parts\": [\n      \"current-rates-and-allowances\"\n    ],\n    \"triggers\": [\n      \"income tax\",\n      \"tax band\",\n      \"tax rate\",\n      \"basic rate\",\n      \"higher rate\",\n      \"personal allowance\",\n      \"tax free allowance\",\n      \"earn before tax\",\n      \"pay tax\"\n    ]\n  },\n  \"marriage allowance\": {\n    \"path\": \"/marriage-allowance\",\n    \"parts\": [\n      \"how-it-works\"\n    ],\n    \"triggers\": [\n      \"marriage allowance\",\n      \"transfer allowance partner\",\n      \"civil partner allowance\"\n    ]\n  },\n  \"help to save\": {\n    \"path\": \"/get-help-savings-low-income\",\n    \"parts\": [\n      \"how-it-works\",\n      \"what-youll-get\",\n      \"eligibility\"\n    ],\n    \"triggers\": [\n      \"help to save\",\n      \"savings bonus low income\",\n      \"government savings bonus\"\n    ]\n  },\n  \"universal credit\": {\n    \"path\": \"/universal-credit\",\n    \"parts\": [\n      \"what-universal-credit-is\",\n      \"eligibility\",\n      \"what-youll-get\"\n    ],\n    \"triggers\": [\n      \"universal credit\"\n    ]\n  },\n  \"budgeting advance\": {\n    \"path\": \"/universal-credit\",\n    \"parts\": [\n      \"get-advance-or-financial-support\"\n    ],\n    \"triggers\": [\n      \"budgeting advance\",\n      \"universal credit advance\",\n      \"advance payment\",\n      \"hardship payment\"\n    ]\n  },\n  \"budgeting loan\": {\n    \"path\": \"/budgeting-help-benefits\",\n    \"parts\": [\n      \"how-it-works\",\n      \"what-youll-get\",\n      \"eligibility\"\n    ],\n    \"triggers\": [\n      \"budgeting loan\",\n      \"interest free loan benefits\"\n    ]\n  },\n  \"council tax discounts\": {\n    \"path\": \"/council-tax\",\n    \"parts\": [\n      \"discounts-for-full-time-students\",\n      \"who-has-to-pay\"\n    ],\n    \"triggers\": [\n      \"council tax\"\n    ]\n  },\n  \"council tax reduction\": {\n    \"path\": \"/apply-council-tax-reduction\",\n    \"parts\": [],\n    \"triggers\": [\n      \"council tax reduction\",\n      \"council tax support\",\n      \"council tax low income\"\n    ]\n  },\n  \"healthy start\": {\n    \"path\": \"/healthy-start\",\n    \"parts\": [],\n    \"triggers\": [\n      \"healthy start\",\n      \"food vouchers\",\n      \"free vitamins\",\n      \"milk vouchers\",\n      \"food child\",\n      \"food kid\",\n      \"food baby\",\n      \"food pregnant\"\n    ]\n  },\n  \"free school meals\": {\n    \"path\": \"/apply-free-school-meals\",\n    \"parts\": [],\n    \"triggers\": [\n      \"school meals\",\n      \"school dinners\",\n      \"school lunch\",\n      \"food child\",\n      \"food kid\"\n    ]\n  },\n  \"tax relief for employees\": {\n    \"path\": \"/tax-relief-for-employees\",\n    \"parts\": [\n      \"overview\",\n      \"uniforms-work-clothing-and-tools\",\n      \"vehicles-you-use-for-work\",\n      \"working-at-home\"\n    ],\n    \"triggers\": [\n      \"tax relief\",\n      \"uniform\",\n      \"work clothes\",\n      \"mileage\",\n      \"working from home tax\",\n      \"job expenses\",\n      \"work expenses\",\n      \"professional fees\"\n    ]\n  },\n  \"cycle to work\": {\n    \"path\": \"/government/publications/cycle-to-work-scheme-implementation-guidance\",\n    \"parts\": [],\n    \"triggers\": [\n      \"cycle to work\",\n      \"cycle scheme\",\n      \"bike scheme\",\n      \"bike to work\"\n    ]\n  },\n  \"child benefit\": {\n    \"path\": \"/child-benefit\",\n    \"parts\": [\n      \"how-it-works\",\n      \"what-youll-get\",\n      \"eligibility\"\n    ],\n    \"triggers\": [\n      \"child benefit\"\n    ]\n  },\n  \"tax-free childcare\": {\n    \"path\": \"/tax-free-childcare\",\n    \"parts\": [\n      \"what-tax-free-childcare-is\",\n      \"check-if-youre-eligible\"\n    ],\n    \"triggers\": [\n      \"tax free childcare\",\n      \"childcare cost\",\n      \"help childcare\"\n    ]\n  },\n  \"minimum wage\": {\n    \"path\": \"/national-minimum-wage-rates\",\n    \"parts\": [],\n    \"triggers\": [\n      \"minimum wage\",\n      \"living wage\",\n      \"nmw\",\n      \"nlw\"\n    ]\n  },\n  \"student finance\": {\n    \"path\": \"/student-finance\",\n    \"parts\": [\n      \"new-fulltime-students\",\n      \"overview\"\n    ],\n    \"triggers\": [\n      \"student finance\",\n      \"student loan\",\n      \"maintenance loan\",\n      \"tuition fee\"\n    ]\n  }\n};\nconst GUIDANCE = new Set([\"answer\", \"calculator\", \"detailed_guide\", \"guidance\", \"guide\", \"licence\", \"local_transaction\", \"place\", \"simple_smart_answer\", \"step_by_step_nav\", \"transaction\"]);\nconst SKIP = new Set([\"armed_forces_covenant_business\", \"authored_article\", \"case_study\", \"closed_consultation\", \"consultation\", \"consultation_outcome\", \"corporate_report\", \"correspondence\", \"decision\", \"foi_release\", \"government_response\", \"impact_assessment\", \"independent_report\", \"ministerial_role\", \"national_statistics\", \"news_story\", \"notice\", \"official_statistics\", \"official_statistics_announcement\", \"open_consultation\", \"oral_statement\", \"organisation\", \"person\", \"policy_group\", \"policy_paper\", \"press_release\", \"promotional\", \"research\", \"speech\", \"statistical_data_set\", \"statistics_announcement\", \"transparency\", \"world_location_news\", \"world_news_story\", \"written_statement\"]);\n\nfunction matchKeyPages(q) {\n  const words = normaliseQuery(q).split(' ').filter(Boolean);\n  const hits = [];\n  for (const [topic, page] of Object.entries(KEY_PAGES)) {\n    let best = 0;\n    for (const trig of page.triggers) {\n      const needed = trig.split(' ');\n      if (needed.every((n) => words.some((w) => w.startsWith(n)))) best = Math.max(best, trig.length);\n    }\n    if (best) hits.push([best, topic, page]);\n  }\n  hits.sort((a, b) => b[0] - a[0]);\n  const out = [];\n  for (const [, topic, page] of hits) {\n    const existing = out.find((o) => o.path === page.path);\n    if (existing) { for (const p of page.parts) if (!existing.parts.includes(p)) existing.parts.push(p); continue; }\n    out.push({ path: page.path, parts: [...page.parts], topic, title: '', summary: '', updated: '' });\n  }\n  return out;\n}\n\nfunction filterResults(results, q) {\n  const terms = queryTerms(q);\n  const seen = new Set();\n  const scored = [];\n  for (const raw of results) {\n    if (!raw || typeof raw !== 'object') continue;\n    const path = safePath(raw.link);\n    if (!path || seen.has(path)) continue;\n    const hay = `${raw.title || ''} ${raw.description || ''}`.toLowerCase();\n    const hits = terms.filter((t) => hasTerm(hay, t)).length;\n    if (terms.length && !hits) continue;\n    seen.add(path);\n    scored.push([hits, raw, path]);\n  }\n  const top = Math.max(0, ...scored.map((s) => s[0]));\n  const floor = terms.length >= 3 ? Math.max(1, top - 1) : 1;\n  const guidance = [], other = [], skipped = [];\n  for (const [hits, raw, path] of scored) {\n    if (hits < floor) continue;\n    const fmt = String(raw.format || raw.content_store_document_type || '');\n    const item = { path, parts: [], title: cleanText(raw.title, 160), summary: cleanText(raw.description, 300), updated: isoDate(raw.public_timestamp), format: fmt };\n    (GUIDANCE.has(fmt) ? guidance : SKIP.has(fmt) ? skipped : other).push(item);\n  }\n  const kept = guidance.concat(other);\n  return kept.length ? kept : skipped;\n}\n\nif (!query) return [];\nconst results = (($input.first() || {}).json || {}).results;\nconst candidates = matchKeyPages(query);\nfor (const item of filterResults(Array.isArray(results) ? results : [], query)) {\n  const existing = candidates.find((c) => c.path === item.path);\n  if (existing) Object.assign(existing, { title: existing.title || item.title, summary: existing.summary || item.summary, updated: existing.updated || item.updated });\n  else candidates.push(item);\n}\nreturn candidates.slice(0, maxPages + 2).map((c) => ({ json: { ...c, query, maxPages } }));\n"
+      },
+      "id": "c4d2e1f0-0003-4000-8000-000000000003",
+      "name": "Pick Pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        200
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "=https://www.gov.uk/api/content{{ $json.path || '/' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "FinTime-hackathon/1.0 (financial coach; GOV.UK guidance lookup)"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 5000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "c4d2e1f0-0004-4000-8000-000000000004",
+      "name": "GOV.UK Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        200
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const SITE = 'https://www.gov.uk';\nconst STOPWORDS = new Set([\"a\", \"about\", \"am\", \"an\", \"and\", \"any\", \"are\", \"as\", \"at\", \"be\", \"but\", \"by\", \"can\", \"do\", \"does\", \"for\", \"from\", \"get\", \"gov\", \"has\", \"have\", \"help\", \"how\", \"i\", \"if\", \"in\", \"into\", \"is\", \"it\", \"many\", \"me\", \"much\", \"my\", \"need\", \"not\", \"of\", \"on\", \"or\", \"our\", \"out\", \"pay\", \"per\", \"rate\", \"rates\", \"should\", \"that\", \"the\", \"their\", \"them\", \"there\", \"they\", \"this\", \"to\", \"uk\", \"we\", \"what\", \"when\", \"who\", \"will\", \"with\", \"you\", \"your\"]);\nconst CTRL_RE = /[\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\u00ad\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]/g;\nconst ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '\"', apos: \"'\", nbsp: ' ', pound: '£', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”', hellip: '…' };\nfunction unescapeHtml(s) {\n  return s.replace(/&(#x[0-9a-f]+|#\\d+|[a-z]+);/gi, (m, e) => {\n    if (e[0] === '#') {\n      const code = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);\n      return Number.isFinite(code) && code > 0 && code < 0x110000 ? String.fromCodePoint(code) : ' ';\n    }\n    return ENTITIES[e.toLowerCase()] ?? m;\n  });\n}\nfunction cleanText(value, maxLen) {\n  if (value === null || value === undefined) return '';\n  let t = String(value).replace(/<[^>]*>/g, ' ');\n  t = unescapeHtml(t).replace(/<[^>]*>/g, ' ').replace(CTRL_RE, ' ').replace(/\\s+/g, ' ').trim();\n  if (t.length > maxLen) {\n    const head = t.slice(0, maxLen - 1);\n    const cut = head.includes(' ') ? head.slice(0, head.lastIndexOf(' ')) : head;\n    t = cut.replace(/[ ,.;:|]+$/, '') + '…';\n  }\n  return t;\n}\nfunction normaliseQuery(q) {\n  return (cleanText(q, 200).toLowerCase().replace(/-/g, ' ').match(/[a-z0-9]+/g) || []).join(' ');\n}\nfunction queryTerms(q) {\n  const out = [];\n  for (const w of normaliseQuery(q).split(' ')) {\n    if (!w || STOPWORDS.has(w) || w.length < 3) continue;\n    const stem = w.slice(0, 5);\n    if (!out.includes(stem)) out.push(stem);\n  }\n  return out;\n}\nfunction escapeRe(s) { return s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'); }\nfunction hasTerm(lower, term) { return new RegExp('\\\\b' + escapeRe(term)).test(lower); }\nfunction safePath(link) {\n  if (typeof link !== 'string') return '';\n  let p = link.trim();\n  if (p.startsWith(SITE)) p = p.slice(SITE.length);\n  return /^\\/[A-Za-z0-9\\/_\\-.]{0,300}$/.test(p) && !p.includes('//') && !p.includes('..') ? p : '';\n}\nfunction isoDate(v) {\n  if (typeof v !== 'string' || !v) return '';\n  const d = new Date(v);\n  return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);\n}\n\n// Turn GOV.UK Content API pages into short, relevant plain-text excerpts:\n// paragraphs, lists merged into their lead-in sentence, and table rows joined with \" | \".\nconst EXCERPT_MAX = 400;\nconst BLOCK_TAGS = new Set(['p', 'li', 'h2', 'h3', 'h4', 'tr', 'dt', 'dd']);\nconst SKIP_TAGS = new Set(['script', 'style', 'svg', 'noscript']);\nconst EXTRA_FIELDS = ['introduction', 'introductory_paragraph', 'more_information', 'need_to_know', 'what_you_need_to_know', 'other_ways_to_apply'];\nconst MONEY_RE = /£\\s?\\d|\\d\\s?%|\\bper cent\\b/i;\nconst OLD_RE = /\\bprevious\\b|\\bpast (tax )?years?\\b|\\brates between\\b|\\bfrom april 20[01]\\d\\b/i;\n\nfunction htmlBlocks(markup) {\n  const blocks = [];\n  if (typeof markup !== 'string' || !markup) return blocks;\n  let heading = '', leadIn = '', blockTag = null, depth = 0, buf = [], cells = [], cellBuf = null, skip = 0;\n  const flush = () => {\n    let text, kind;\n    if (blockTag === 'tr') { text = cells.some((c) => c !== '–') ? cells.join(' | ') : ''; kind = 'row'; }\n    else { text = cleanText(buf.join(''), 2000); kind = { h2: 'heading', h3: 'heading', h4: 'heading', li: 'item' }[blockTag] || 'para'; }\n    buf = []; cells = [];\n    if (!text) return;\n    if (kind === 'heading') { heading = text; leadIn = ''; blocks.push({ kind, text, heading: text }); return; }\n    const block = { kind, text, heading };\n    if (kind === 'item' && leadIn) block.lead_in = leadIn;\n    if (kind === 'para') leadIn = text.endsWith(':') ? text : '';\n    blocks.push(block);\n  };\n  const re = /<(\\/?)([a-zA-Z][a-zA-Z0-9]*)\\b[^>]*>|<!--[\\s\\S]*?-->|([^<]+)/g;\n  let m;\n  while ((m = re.exec(markup)) !== null) {\n    const closing = m[1], tag = (m[2] || '').toLowerCase(), text = m[3];\n    if (text !== undefined) {\n      if (skip) continue;\n      if (cellBuf !== null) cellBuf.push(text); else if (blockTag) buf.push(text);\n      continue;\n    }\n    if (!tag) continue;\n    if (SKIP_TAGS.has(tag)) { skip = Math.max(0, skip + (closing ? -1 : 1)); continue; }\n    if (tag === 'br' && blockTag && cellBuf === null) { buf.push(' '); continue; }\n    if (blockTag === 'tr' && (tag === 'td' || tag === 'th')) {\n      if (closing) { if (cellBuf !== null) cells.push(cleanText(cellBuf.join(''), 200) || '–'); cellBuf = null; }\n      else cellBuf = [];\n      continue;\n    }\n    if (BLOCK_TAGS.has(tag)) {\n      if (!closing) {\n        if (blockTag === null) { blockTag = tag; depth = 1; }\n        else if (tag === blockTag) depth += 1;\n        else buf.push(' ');\n      } else if (blockTag === tag) {\n        depth -= 1;\n        if (depth <= 0) {\n          if (cellBuf !== null) { cells.push(cleanText(cellBuf.join(''), 200) || '–'); cellBuf = null; }\n          flush(); blockTag = null;\n        }\n      }\n      continue;\n    }\n    if (blockTag && ['ul', 'ol', 'table', 'div'].includes(tag) && !closing) buf.push(' ');\n  }\n  if (blockTag) flush();\n  return blocks;\n}\n\nfunction groupBlocks(blocks) {\n  const units = [];\n  for (const b of blocks) {\n    const prev = units[units.length - 1];\n    if (b.kind === 'item' && b.lead_in) {\n      if (prev && prev.group === 'list' && prev.lead_in === b.lead_in) { prev.text += `; ${b.text}`; continue; }\n      if (prev && prev.kind === 'para' && prev.text === b.lead_in) units.pop();\n      units.push({ kind: 'item', group: 'list', lead_in: b.lead_in, heading: b.heading || '', text: `${b.lead_in} ${b.text}` });\n      continue;\n    }\n    if (b.kind === 'row') {\n      if (prev && prev.group === 'table' && prev.heading === (b.heading || '')) { prev.text += `; ${b.text}`; continue; }\n      units.push({ kind: 'row', group: 'table', heading: b.heading || '', text: (b.heading ? `${b.heading}: ` : '') + b.text });\n      continue;\n    }\n    units.push({ ...b });\n  }\n  return units;\n}\n\nfunction bodyHtml(v) {\n  if (typeof v === 'string') return v;\n  if (Array.isArray(v)) { const p = v.find((x) => x && x.content_type === 'text/html'); return p ? String(p.content || '') : ''; }\n  return '';\n}\n\nfunction pageSections(content) {\n  const details = content && typeof content.details === 'object' && content.details ? content.details : {};\n  const sections = [];\n  if (Array.isArray(details.parts)) {\n    for (const part of details.parts) {\n      if (!part || typeof part !== 'object') continue;\n      const slug = typeof part.slug === 'string' && /^[a-z0-9\\-]{1,100}$/.test(part.slug) ? part.slug : '';\n      sections.push({ slug, title: cleanText(part.title, 160), blocks: htmlBlocks(bodyHtml(part.body)) });\n    }\n  }\n  const main = bodyHtml(details.body);\n  const extra = EXTRA_FIELDS.map((k) => details[k]).filter((v) => typeof v === 'string');\n  if (main || extra.length) sections.push({ slug: '', title: '', blocks: htmlBlocks([main, ...extra].join('\\n')) });\n  return sections;\n}\n\nfunction selectExcerpts(sections, query, preferred, limit) {\n  const terms = queryTerms(query);\n  const scored = [];\n  let order = 0;\n  for (const s of sections) {\n    const titleL = (s.title || '').toLowerCase();\n    let partBonus = 0;\n    if (s.slug && preferred.includes(s.slug)) partBonus += 3 - Math.min(preferred.indexOf(s.slug), 2) * 0.5;\n    partBonus += terms.filter((t) => hasTerm(titleL, t)).length;\n    for (const b of groupBlocks(s.blocks)) {\n      order += 1;\n      if (b.kind === 'heading') continue;\n      const text = cleanText(b.text, EXCERPT_MAX);\n      if (text.length < 25 && b.kind !== 'row') continue;\n      const lower = text.toLowerCase();\n      const hits = terms.filter((t) => hasTerm(lower, t)).length;\n      const headingHits = terms.filter((t) => hasTerm((b.heading || '').toLowerCase(), t)).length;\n      let score = 3 * hits + headingHits + partBonus;\n      if (MONEY_RE.test(text)) score += 2 + (b.group === 'table' ? 4 : 0);\n      else if (/\\d/.test(text)) score += 0.5;\n      if (/\\bcurrent\\b|\\bthis tax year\\b/i.test(`${b.heading || ''} ${lower.slice(0, 80)}`)) score += 2;\n      if (lower.includes('welsh (cymraeg)') || text.includes('@')) score -= 5;\n      if (OLD_RE.test(`${titleL} ${b.heading || ''} ${lower.slice(0, 80)}`)) score -= 8;\n      scored.push([score, order, text, s.slug]);\n    }\n  }\n  if (!scored.length) return [[], ''];\n  const best = [...scored].sort((a, b) => b[0] - a[0] || a[1] - b[1]);\n  const seen = new Set(), picked = [];\n  for (const item of best) {\n    if (seen.has(item[2])) continue;\n    if (item[0] <= 0 && picked.length) break;\n    seen.add(item[2]); picked.push(item);\n    if (picked.length >= limit) break;\n  }\n  const topSlug = picked.length ? picked[0][3] : '';\n  picked.sort((a, b) => a[1] - b[1]);\n  return [picked.map((p) => p[2]), topSlug];\n}\n\nconst hints = $('Pick Pages').all().map((i) => i.json);\nconst pages = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const content = items[i].json || {};\n  const hintIndex = items[i].pairedItem && typeof items[i].pairedItem.item === 'number' ? items[i].pairedItem.item : i;\n  const hint = hints[hintIndex] || hints[i] || {};\n  const maxPages = hint.maxPages || 3;\n  if (pages.length >= maxPages) break;\n  if (!content.details || ['redirect', 'gone'].includes(content.document_type)) continue;\n  const path = safePath(content.base_path) || safePath(hint.path);\n  if (!path) continue;\n  const sections = pageSections(content);\n  const limit = pages.length ? 4 : 6;\n  const [excerpts, slug] = selectExcerpts(sections, hint.query || '', hint.parts || [], limit);\n  const title = cleanText(content.title, 160) || hint.title || '';\n  if (!title || !excerpts.length) continue;\n  const firstSlug = (sections.find((s) => s.slug) || {}).slug || '';\n  const url = SITE + path + (slug && slug !== firstSlug ? `/${slug}` : '');\n  if (pages.some((p) => p.url === url)) continue;\n  pages.push({\n    title,\n    url,\n    summary: cleanText(content.description, 300) || hint.summary || '',\n    updated: isoDate(content.public_updated_at) || hint.updated || '',\n    excerpts,\n  });\n}\nreturn [{ json: { source: 'gov.uk', pages } }];\n"
+      },
+      "id": "c4d2e1f0-0005-4000-8000-000000000005",
+      "name": "Extract Excerpts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "c4d2e1f0-0006-4000-8000-000000000006",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "GOV.UK Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GOV.UK Search": {
+      "main": [
+        [
+          {
+            "node": "Pick Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Pages": {
+      "main": [
+        [
+          {
+            "node": "GOV.UK Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GOV.UK Content": {
+      "main": [
+        [
+          {
+            "node": "Extract Excerpts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Excerpts": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

@@ -29,7 +29,7 @@ from backend.agent import context, orchestrator, tools, voice
 API_BASE = "https://api.elevenlabs.io"
 TIMEOUT_SECONDS = 15.0
 
-AGENT_NAME = "FinTime Coach"
+AGENT_NAME = "Nat"
 # Fast LLM hosted by ElevenLabs (Claude Haiku class); override with CONVAI_LLM.
 LLM_MODEL = os.getenv("CONVAI_LLM", "claude-haiku-4-5")
 # Lowest-latency ElevenLabs TTS model. English agents must use a "v2" turbo/flash model
@@ -54,6 +54,8 @@ VOICE_TOOL_NAMES: tuple[str, ...] = (
     "get_upcoming_sales",
     "get_tips",
     "get_economic_news",
+    "lookup_gov_uk",
+    "get_money_owed",
     "get_benchmark",
 )
 
@@ -95,7 +97,7 @@ _state: dict[str, Any] = {}
 def _api_key() -> str:
     key = (config.ELEVENLABS_API_KEY or "").strip()
     if not key:
-        raise ConvAIUnavailable("ELEVENLABS_API_KEY is not configured, so the live voice coach is off.")
+        raise ConvAIUnavailable("ELEVENLABS_API_KEY is not configured, so live voice with Nat is off.")
     return key
 
 
@@ -196,7 +198,7 @@ def voice_tool_configs() -> list[dict]:
 
 
 def agent_body(tool_ids: list[str]) -> dict:
-    """Create/patch body for the FinTime Coach agent, tuned for low latency."""
+    """Create/patch body for the Nat voice agent, tuned for low latency."""
     return {
         "name": AGENT_NAME,
         "conversation_config": {
@@ -299,7 +301,7 @@ def _find_agent_id() -> Optional[str]:
 
 
 def ensure_agent() -> str:
-    """Return the FinTime Coach agent_id, creating or re-syncing it on first use."""
+    """Return the Nat voice agent_id, creating or re-syncing it on first use."""
     with _lock:
         if _state.get("agent_id"):
             return _state["agent_id"]

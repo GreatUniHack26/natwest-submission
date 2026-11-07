@@ -2,6 +2,7 @@
 
 GET /users/{id}/tips        -> list[Tip]          (backend.rules.all_tips; information, not advice)
 GET /users/{id}/benchmarks  -> BenchmarkSummary   (ONS averages via backend.agent.benchmark_adapter)
+GET /users/{id}/entitlements -> EntitlementSummary ("Money you might be owed", backend.rules.entitlements)
 
 Benchmarks are ONS *averages* for the user's region and household type. ONS does not publish
 a spread, so there is no "usual range" here; the client must not invent one. When no
@@ -18,6 +19,7 @@ from pydantic import BaseModel
 from backend import data
 from backend.agent import benchmark_adapter
 from backend.rules import all_tips
+from backend.rules import entitlements
 from contracts.schemas import Tip
 
 router = APIRouter(prefix="/users/{user_id}", tags=["insights"])
@@ -55,6 +57,26 @@ class BenchmarkSummary(BaseModel):
     sources: list[BenchmarkSource]
 
 
+class Entitlement(BaseModel):
+    id: str
+    title: str
+    why_you: str  # plain-English evidence from the user's own data
+    est_value: Optional[int] = None  # annual £, only where GOV.UK gives a defensible figure
+    confidence: str  # "likely" | "worth checking"
+    how_to_claim: str
+    gov_url: str
+    checker_url: Optional[str] = None
+    depends_on: Optional[str] = None  # id of an item this needs first (e.g. "universal_credit")
+    last_checked: str
+
+
+class EntitlementSummary(BaseModel):
+    user_id: str
+    items: list[Entitlement]
+    total_est_value: int
+    disclaimer: str
+
+
 def _user_or_404(user_id: str):
     try:
         return data.get_user(user_id)
@@ -66,6 +88,12 @@ def _user_or_404(user_id: str):
 def get_tips(user_id: str):
     _user_or_404(user_id)
     return all_tips(user_id)
+
+
+@router.get("/entitlements", response_model=EntitlementSummary)
+def get_entitlements(user_id: str):
+    _user_or_404(user_id)
+    return entitlements.entitlements_summary(user_id)
 
 
 def _sources(region: str, size: Optional[int]) -> list[BenchmarkSource]:
@@ -111,3 +139,18 @@ def get_benchmarks(user_id: str, household_size: Optional[int] = Query(None, ge=
         periods_note=raw.get("periods_note"),
         sources=_sources(raw.get("region", ""), size) if comparisons else [],
     )
+
+
+@router.get("/alarms")
+def get_alarms(user_id: str):
+    """One ranked, de-duplicated alert feed in plain words (act / watch / good)."""
+    from backend import config as _config
+    from backend.insights.alarms import build_alarms
+
+    if _config.MOCK_FORECAST:
+        raise HTTPException(503, "Alarms require real forecast mode")
+    try:
+        data.get_user(user_id)
+    except Exception as exc:
+        raise HTTPException(404, "Unknown user") from exc
+    return {"user_id": user_id, "alarms": build_alarms(user_id)}

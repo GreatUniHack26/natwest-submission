@@ -6,7 +6,7 @@ from typing import Any
 from backend import config, rules
 from backend import forecast as fc
 from backend.agent import benchmark_adapter, planner_tools
-from backend.integrations import news
+from backend.integrations import govuk, news
 
 TOOLS = [
     {
@@ -65,6 +65,16 @@ TOOLS = [
         },
     },
     {
+        "name": "lookup_gov_uk",
+        "description": "Official GOV.UK guidance on UK tax, allowances, benefits and government schemes (e.g. Personal Allowance and tax bands, Marriage Allowance, council tax discounts, Universal Credit, Help to Save, Healthy Start, free school meals, Child Benefit, Tax-Free Childcare, minimum wage, job-expense tax relief). Returns short excerpts with gov.uk links. General information, not personalised advice: quote the page's figures exactly as written and link the page.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"query": {"type": "string", "description": "Short topic, e.g. 'personal allowance' or 'council tax student discount'"}},
+            "required": ["query"],
+            "additionalProperties": False,
+        },
+    },
+    {
         "name": "get_spending_forecast",
         "description": "This month's spending per category from the digital twin: spent so far, projected month-end, usual month, and overspend alarms.",
         "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
@@ -77,6 +87,11 @@ TOOLS = [
             "properties": {"horizon_days": {"type": "integer"}},
             "additionalProperties": False,
         },
+    },
+    {
+        "name": "get_money_owed",
+        "description": "UK schemes, discounts and reliefs this person may be missing (e.g. council tax discounts, Universal Credit, Help to Save, childcare help), found from their own data, each with an official GOV.UK link and checker. Possible eligibility only, never a promise.",
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
     {
         "name": "get_deposit_ideas",
@@ -192,6 +207,11 @@ def run_tool(user_id: str, name: str, args: dict):
         result["chance_dip_into_pots_percent"] = round(result.get("chance_dip_into_pots", 0) * 100, 1)
         return result
 
+    if name == "get_money_owed":
+        from backend.rules.entitlements import entitlements_summary
+
+        return entitlements_summary(user_id)
+
     if name == "get_deposit_ideas":
         return fc.deposit_ideas(user_id)
 
@@ -211,6 +231,14 @@ def run_tool(user_id: str, name: str, args: dict):
         if not _is_int(limit) or limit < 1 or limit > 10:
             raise ValueError("limit must be an integer between 1 and 10")
         return news.get_economic_news(topic=topic, limit=limit)
+
+    if name == "lookup_gov_uk":
+        query = validated["query"]
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError("query must be a non-empty string")
+        if len(query) > govuk.QUERY_MAX:
+            raise ValueError(f"query must be at most {govuk.QUERY_MAX} characters")
+        return govuk.lookup_gov_uk(query.strip())
 
     if name == "plan_debt_payoff":
         return planner_tools.debt_payoff(user_id, validated)
