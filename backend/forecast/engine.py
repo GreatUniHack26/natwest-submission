@@ -1,13 +1,86 @@
-"""P2: core forecast. Day-by-day balance projection.
+"""Daily cash flows in pence, sampled weekly with exact horizon endpoints.
 
-balance[d] = balance[d-1] + recurring income due on d - recurring bills due on d - baseline spend(weekday(d))
-low/high = expected -/+ 1 std-dev accumulated.
-Risk events: first date expected < 0 (high), or low < 0 (medium), or balance < sum(pots due) (medium).
-`overrides` keys (extension what-if): income_multiplier, extra_monthly_cost, extra_one_off.
-Always fill Forecast.assumptions with plain-language strings (shown to the user).
+Opening balance is the repository's close-of-as_of balance. Scheduled flows
+start the following day. Daily independent variances add; income amount
+variance is added on each due date. Bands are one population standard deviation
+and are scenarios, not confidence guarantees. Risks are inspected daily.
 """
-from contracts.schemas import Forecast
+import datetime as dt
+import math
+from collections import defaultdict
+
+from backend import config
+from contracts.schemas import Forecast, ForecastPoint, RiskEvent
+from .baseline import weekday_baseline
+from .inputs import Inputs, load_inputs
+from .money import pence, pounds
+from .recurring import amount_std, occurrences, patterns
 
 
-def build_forecast(user_id: str, horizon_days: int, overrides: dict) -> Forecast:
-    raise NotImplementedError("P2: see module docstring")
+def validate_horizon(horizon: int) -> None:
+    if isinstance(horizon, bool) or not isinstance(horizon, int) or not 7 <= horizon <= 365:
+        raise ValueError('horizon_days must be an integer between 7 and 365')
+
+
+def protected_total(pots, on_date: dt.date) -> int:
+    return sum(pence(p.amount) for p in pots if p.due_date is None or p.due_date >= on_date)
+
+
+def risks_for_daily(points: list[ForecastPoint], protected: dict[dt.date, int]) -> list[RiskEvent]:
+    found = set()
+    events = []
+    for point in points:
+        for key, condition, severity, reason in [
+            ('expected', point.expected < 0, 'high', 'Expected balance falls below zero.'),
+            ('low', point.low < 0, 'medium', 'Low-band balance falls below zero.'),
+            ('pots', protected.get(point.date, 0) > 0 and pence(point.expected) < protected.get(point.date, 0), 'medium', 'Expected balance uses money protected by pots.'),
+        ]:
+            if condition and key not in found:
+                found.add(key)
+                events.append(RiskEvent(date=point.date, severity=severity, reason=reason))
+    return events
+
+
+def project(data: Inputs, horizon_days: int) -> list[ForecastPoint]:
+    validate_horizon(horizon_days)
+    end = data.as_of + dt.timedelta(days=horizon_days)
+    flows = defaultdict(int)
+    variances = defaultdict(float)
+    for item, observations in patterns(data.transactions):
+        for day in occurrences(item, data.as_of + dt.timedelta(days=1), end):
+            flows[day] += pence(item.amount)
+            variances[day] += (amount_std(observations) * 100) ** 2
+    baseline = weekday_baseline(data.transactions, data.as_of)
+    balance, variance = data.balance, 0.0
+    points = [ForecastPoint(date=data.as_of, low=pounds(balance), expected=pounds(balance), high=pounds(balance))]
+    for offset in range(1, horizon_days + 1):
+        day = data.as_of + dt.timedelta(days=offset)
+        spend, std = baseline[day.weekday()]
+        balance += flows[day] - pence(spend)
+        variance += variances[day] + (std * 100) ** 2
+        width = round(math.sqrt(variance))
+        points.append(ForecastPoint(date=day, low=pounds(balance - width), expected=pounds(balance), high=pounds(balance + width)))
+    return points
+
+
+def response(data: Inputs, daily: list[ForecastPoint], horizon_days: int) -> Forecast:
+    protected = {p.date: protected_total(data.pots, p.date) for p in daily}
+    assumptions = [
+        f'Opening balance £{pounds(data.balance):.2f} is the repository balance at close of {data.as_of}.',
+        'History covers the preceding 84 days; days without recorded spending count as zero. Sparse history may understate spending.',
+        'Recurring observations and positive transactions are excluded from everyday spending; refunds do not predict future income.',
+        'Monthly schedules preserve calendar dates; variable income uses its historical mean and observed variability.',
+        'Low/high bands are expected balance plus/minus one accumulated standard deviation; daily and payment variances are independent.',
+        'Pots reserve existing money, not additional cash flows; dated reservations remain protected through their due date.',
+    ]
+    if not data.transactions:
+        assumptions.append('No historical transactions: future income and spending are unknown, not proven zero.')
+    return Forecast(user_id=data.user_id, horizon_days=horizon_days,
+                    points=[p for i, p in enumerate(daily) if i % 7 == 0 or i == horizon_days],
+                    risk_events=risks_for_daily(daily, protected), assumptions=assumptions)
+
+
+def build_forecast(user_id: str, horizon_days: int, overrides: dict, *, as_of: dt.date | None = None) -> Forecast:
+    validate_horizon(horizon_days)
+    data = load_inputs(user_id, as_of or config.TODAY)
+    return response(data, project(data, horizon_days), horizon_days)
