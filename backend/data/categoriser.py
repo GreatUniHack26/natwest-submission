@@ -53,6 +53,7 @@ RULES: dict[str, tuple[str, str]] = {
     "little stars club": ("childcare", "need"),
     "primary school": ("school", "need"),
     "provident loan": ("debt", "need"),
+    "course fee": ("education", "need"),
     # eating out
     "deliveroo": ("eating out", "want"),
     "greggs": ("eating out", "want"),
