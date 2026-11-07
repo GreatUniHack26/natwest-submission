@@ -42,7 +42,7 @@ def risks_for_daily(points: list[ForecastPoint], protected: dict[dt.date, int]) 
     return events
 
 
-def project(data: Inputs, horizon_days: int) -> list[ForecastPoint]:
+def project(data: Inputs, horizon_days: int, *, one_off: dict[dt.date, int] | None = None) -> list[ForecastPoint]:
     validate_horizon(horizon_days)
     end = data.as_of + dt.timedelta(days=horizon_days)
     flows = defaultdict(int)
@@ -52,12 +52,13 @@ def project(data: Inputs, horizon_days: int) -> list[ForecastPoint]:
             flows[day] += pence(item.amount)
             variances[day] += (amount_std(observations) * 100) ** 2
     baseline = weekday_baseline(data.transactions, data.as_of)
-    balance, variance = data.balance, 0.0
+    one_off = one_off or {}
+    balance, variance = data.balance - one_off.get(data.as_of, 0), 0.0
     points = [ForecastPoint(date=data.as_of, low=pounds(balance), expected=pounds(balance), high=pounds(balance))]
     for offset in range(1, horizon_days + 1):
         day = data.as_of + dt.timedelta(days=offset)
         spend, std = baseline[day.weekday()]
-        balance += flows[day] - pence(spend)
+        balance += flows[day] - pence(spend) - one_off.get(day, 0)
         variance += variances[day] + (std * 100) ** 2
         width = round(math.sqrt(variance))
         points.append(ForecastPoint(date=day, low=pounds(balance - width), expected=pounds(balance), high=pounds(balance + width)))
