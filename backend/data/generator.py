@@ -38,7 +38,7 @@ OPENING_BALANCE_MERCHANT = "Opening balance"
 HOUSEHOLDS = ("family",)
 
 HISTORY_MONTHS = 6
-RENT = 475.00
+RENT = 950.00
 PHONE_BILL = 15.00
 PHONE_DAY = 12
 SUBSCRIPTIONS = [("Spotify", 5.99, 3), ("Netflix", 10.99, 20)]  # (merchant, £, day of month)
