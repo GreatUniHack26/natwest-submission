@@ -1,5 +1,7 @@
 """Focused unit and integration tests for Issue #16: Agent LLM tool-calling loop (orchestrator)."""
+import importlib
 import re
+import sys
 from unittest.mock import MagicMock
 
 import httpx
@@ -12,10 +14,17 @@ from contracts.schemas import User
 CURRENCY_RE = re.compile(r"£\s*(\d+(?:,\d{3})*(?:\.\d+)?)")
 
 
-def test_thirty_pound_shirt_triggers_simulate_purchase_and_merges_numbers(monkeypatch):
+@pytest.mark.parametrize("benchmarks_available", [False, True])
+def test_thirty_pound_shirt_triggers_simulate_purchase_and_merges_numbers(monkeypatch, benchmarks_available):
     """'Can I afford a £30 shirt?' calls simulate_purchase(amount=30) and returns verified numbers."""
     monkeypatch.setattr(config, "MOCK_FORECAST", True)
     monkeypatch.setattr(config, "LLM_MODEL", "claude-sonnet-5-5")
+    if not benchmarks_available:
+        monkeypatch.setitem(sys.modules, "backend.benchmarks", None)
+    else:
+        assert callable(importlib.import_module("backend.benchmarks").get_benchmark)
+    base_tool_defs = list(tools.TOOLS)
+    expected_tool_defs = tools.get_active_tools()
 
     recorded_calls = []
     real_run_tool = tools.run_tool
@@ -87,7 +96,13 @@ def test_thirty_pound_shirt_triggers_simulate_purchase_and_merges_numbers(monkey
 
     # 4. Verify model pinning and tool schemas passed to LLM
     assert llm_calls[0]["model"] == "claude-sonnet-5-5"
-    assert llm_calls[0]["tool_defs"] == tools.TOOLS
+    active_tool_defs = llm_calls[0]["tool_defs"]
+    assert active_tool_defs == expected_tool_defs
+    assert [tool for tool in active_tool_defs if tool["name"] != "get_benchmark"] == base_tool_defs
+    active_names = [tool["name"] for tool in active_tool_defs]
+    assert len(active_names) == len(set(active_names))
+    assert active_names.count("get_benchmark") == int(benchmarks_available)
+    assert tools.TOOLS == base_tool_defs
 
 
 def test_failed_tool_produces_plain_apology_without_invented_numbers(monkeypatch):
