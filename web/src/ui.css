@@ -244,7 +244,7 @@ a.row:focus-visible, button.row:focus-visible { outline-offset: -3px; border-rad
   :root { --tab-bar-clearance: calc(4rem + env(safe-area-inset-bottom)); }
   .toolbar { display: flex; justify-content: space-between; }
   .section-nav {
-    position: fixed; inset: auto 0 0; z-index: 60;
+    position: fixed; inset: auto 0 0; z-index: 60; justify-self: stretch; width: auto;
     display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0;
     padding: 0 max(0.25rem, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(0.25rem, env(safe-area-inset-left));
     background: var(--surface);
@@ -295,3 +295,11 @@ a.row:focus-visible, button.row:focus-visible { outline-offset: -3px; border-rad
 .sheet-card { padding: 0.25rem var(--gutter) var(--gutter); }
 .panel-head .see-all { margin-block: -0.5rem; }
 .panel-empty, .panel-loading { margin: 0; padding-block: 0.75rem; }
+
+/* Compact forecast on Home: no inner card, one number, the chart */
+.tt-story { background: none; padding: 0.5rem 0 0; border-radius: 0; }
+.tt[data-compact="true"] .tt-facts > :not(.tt-chance) { display: none; }
+.tt[data-compact="true"] .tt-legend { display: none; }
+#forecast-preview .spending-link { display: none; }
+.tt-chance[data-level="high"]::before { content: none; }
+.tt-amount { font-size: 2.25rem; font-weight: 700; }
