@@ -13,7 +13,7 @@ RULES: dict[str, tuple[str, str]] = {
     "tfl": ("transport", "need"),
     "deliveroo": ("eating out", "want"),
     "greggs": ("eating out", "want"),
-    "uniqlo": ("clothes", "want"),
+    "uniqlo": ("clothing", "want"),
 }
 
 
