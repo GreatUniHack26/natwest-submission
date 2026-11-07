@@ -15,7 +15,7 @@ from .baseline import weekday_baseline
 from .inputs import Inputs, load_inputs
 from .money import pence, pounds
 from .recurring import occurrences, patterns, payment_std
-from .reservations import bill_schedule, protected_on
+from .reservations import bill_schedule, protected_on, remaining_pots
 
 
 def validate_horizon(horizon: int) -> None:
@@ -63,14 +63,15 @@ def project(data: Inputs, horizon_days: int, *, one_off: dict[dt.date, int] | No
 
 def response(data: Inputs, daily: list[ForecastPoint], horizon_days: int) -> Forecast:
     bills = bill_schedule([item for item, _ in patterns(data.transactions)], data.as_of + dt.timedelta(days=1), daily[-1].date)
-    protected = {p.date: protected_on(data.pots, bills, p.date) for p in daily}
+    pots = remaining_pots(data.pots, data.transactions, data.as_of)
+    protected = {p.date: protected_on(pots, bills, p.date) for p in daily}
     assumptions = [
         f'Opening balance £{pounds(data.balance):.2f} is the repository balance at close of {data.as_of}.',
         'Recurrences use up to 180 days; everyday spending uses the preceding 84 days; days without recorded spending count as zero. Sparse history may understate spending.',
         'Recurring observations and positive transactions are excluded from everyday spending; refunds do not predict future income.',
         'Monthly schedules preserve calendar dates; irregular income uses its mean observed receipt and cadence, with observed amount variability and income-times-gap-variation timing uncertainty; neither income nor timing is guaranteed.',
         'Low/high bands are expected balance plus/minus one accumulated standard deviation; daily and payment variances are independent.',
-        'Pots reserve existing money through their due date. A dated pot funds a bill only with the exact same merchant name and payment date; that allocation is consumed when paid.',
+        'Pots reserve existing money through their due date. A dated pot funds a bill only with the exact same merchant name and payment date; that allocation is consumed when paid, including matching actual debits already posted on the opening date.',
     ]
     if not data.transactions:
         assumptions.append('No historical transactions: future income and spending are unknown, not proven zero.')
