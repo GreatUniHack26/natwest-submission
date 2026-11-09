@@ -23,7 +23,6 @@ import Landing from "./screens/Landing";
 import AffordScreen from "./screens/AffordScreen";
 import Transactions from "./screens/Transactions";
 import Tips from "./screens/Tips";
-import Meet from "./screens/Meet";
 import SpendingForecast from "./components/SpendingForecast";
 import WhatIfPanel from "./components/WhatIfPanel";
 import { dateLabel, gbp } from "./format";
@@ -482,19 +481,13 @@ function SectionNav({ showHousehold }: { showHousehold: boolean }) {
   );
 }
 
-// /meet is the shareable demo page: Pete only, video, Nat and how it works.
-const meetMode = window.location.pathname.replace(/\/+$/, "") === "/meet";
-const onMeetPage = () => meetMode && (!window.location.hash || window.location.hash === "#meet");
-
 export default function App() {
   const [persona, setPersona] = useState<Persona>(personas[0]);
-  const [meetPage, setMeetPage] = useState(onMeetPage);
   const [health, setHealth] = useState<ApiHealth>();
   const [view, setView] = useState<View>(currentView);
   const [screen, setScreen] = useState<ScreenId | null>(() => {
     // First visit in this tab starts at the persona picker, like the mockup.
     try {
-      if (meetMode) return screenFromHash();
       if (!window.location.hash || window.location.hash === "#start") return "start";
     } catch { /* storage unavailable: skip the picker */ }
     return screenFromHash();
@@ -504,7 +497,6 @@ export default function App() {
     const sync = () => {
       setScreen(screenFromHash());
       setView(currentView());
-      setMeetPage(onMeetPage());
     };
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
@@ -545,12 +537,12 @@ export default function App() {
       <a className="skip-link" href="#overview">Skip to main content</a>
       <header className="app-header">
         <div className="toolbar">
-          <a className="brand" href={meetMode ? "#meet" : "#overview"} aria-label="Nat home">
+          <a className="brand" href="#overview" aria-label="Nat home">
             <span className="brand-mark" aria-hidden="true">N</span>
             Nat
           </a>
-          {!meetPage && <SectionNav showHousehold={persona.name === "Family"} />}
-          {!meetMode && <div className="toolbar-end">
+          <SectionNav showHousehold={persona.name === "Family"} />
+          <div className="toolbar-end">
             <ProfileSheet
               options={personas.map((p) => ({ key: p.name, label: p.label, detail: p.detail, initial: p.initial }))}
               current={persona.name}
@@ -559,18 +551,16 @@ export default function App() {
                 setPersona(option);
                 if (option.name !== "Family" && window.location.hash === "#household") window.location.hash = "overview";
               }} />
-          </div>}
+          </div>
         </div>
       </header>
-      {screen !== "start" && !meetPage && health?.mock.agent === false && <NatLauncher key={persona.id} userId={persona.id} name={persona.name === "Family" ? "Maya" : persona.name} />}
-      <main className="app-shell" id="overview" tabIndex={-1} data-view={meetPage ? "meet" : screen ?? view}>
+      {screen !== "start" && health?.mock.agent === false && <NatLauncher key={persona.id} userId={persona.id} name={persona.name === "Family" ? "Maya" : persona.name} />}
+      <main className="app-shell" id="overview" tabIndex={-1} data-view={screen ?? view}>
         {screen === "start" && <Landing onPick={(userId) => pickPersona(userId)} />}
         {screen === "afford" && <AffordScreen key={persona.id} userId={persona.id} onAskCoach={() => { window.location.hash = "nat"; }} />}
         {screen === "transactions" && <Transactions key={persona.id} userId={persona.id} />}
         {screen === "tips" && <Tips key={persona.id} userId={persona.id} />}
-        {meetPage && <Meet home={<Dashboard view="home" key="meet-home" persona={persona} mock={health?.mock}
-          demoPots={[]} onDemoPotAdded={() => undefined} />} />}
-        {screen === null && !meetPage && <Dashboard
+        {screen === null && <Dashboard
           view={view}
           key={persona.name}
           persona={persona}

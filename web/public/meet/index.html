@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#3C1053" />
+    <title>Meet Nat</title>
+    <meta name="description" content="Nat simulates your next 90 days, warns you before you run short, and talks it through with you by voice." />
+    <meta property="og:site_name" content="Nat" />
+    <meta property="og:type" content="video.other" />
+    <meta property="og:url" content="https://nat-greatunihack.vercel.app/meet" />
+    <meta property="og:title" content="Meet Nat: a money assistant that sees trouble coming" />
+    <meta property="og:description" content="Nat simulates your next 90 days, warns you before you run short, and talks it through with you by voice. Built at GreatUniHack 2026 for the NatWest challenge." />
+    <meta property="og:image" content="https://nat-greatunihack.vercel.app/nat-promo-poster.jpg" />
+    <meta property="og:image:width" content="1920" />
+    <meta property="og:image:height" content="1080" />
+    <meta property="og:video" content="https://nat-greatunihack.vercel.app/nat-promo.mp4" />
+    <meta property="og:video:type" content="video/mp4" />
+    <meta property="og:video:width" content="1920" />
+    <meta property="og:video:height" content="1080" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <style>
+      html, body { margin: 0; height: 100%; background: #3C1053; }
+      body { display: grid; place-items: center; min-height: 100svh; }
+      .wrap { position: relative; width: min(100vw, calc(100svh * 16 / 9)); aspect-ratio: 16 / 9; background: #000; }
+      video { width: 100%; height: 100%; display: block; object-fit: contain; }
+      button {
+        position: absolute; inset: 0; margin: auto; width: fit-content; height: fit-content;
+        display: inline-flex; align-items: center; gap: 10px; padding: 14px 24px; border: 0; cursor: pointer;
+        border-radius: 999px; background: #fff; color: #3C1053; white-space: nowrap;
+        font: 800 17px system-ui, -apple-system, "Segoe UI", sans-serif;
+        box-shadow: 0 14px 34px -10px rgb(0 0 0 / 55%);
+      }
+      .wrap.idle::after { content: ""; position: absolute; inset: 0; background: rgb(20 4 30 / 40%); pointer-events: none; }
+      button { z-index: 1; }
+      @media (max-width: 560px) { button { padding: 11px 18px; font-size: 15px; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap idle" id="wrap">
+      <video id="v" src="/nat-promo.mp4" poster="/nat-promo-poster.jpg" preload="metadata" playsinline></video>
+      <button id="play" type="button" aria-label="Play the Nat video with sound">&#9654; Play video</button>
+    </div>
+    <script>
+      const v = document.getElementById("v"), b = document.getElementById("play"), w = document.getElementById("wrap");
+      function start() { b.remove(); w.classList.remove("idle"); v.controls = true; v.muted = false; v.play().catch(() => {}); }
+      b.addEventListener("click", start);
+      v.addEventListener("play", () => { if (document.body.contains(b)) { b.remove(); w.classList.remove("idle"); v.controls = true; } });
+    </script>
+  </body>
+</html>

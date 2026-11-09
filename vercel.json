@@ -4,8 +4,7 @@
   "outputDirectory": "web/dist",
   "framework": null,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index" },
-    { "source": "/meet", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "/api/index" }
   ],
   "functions": {
     "api/index.py": { "maxDuration": 60, "includeFiles": "{backend,contracts}/**" }
