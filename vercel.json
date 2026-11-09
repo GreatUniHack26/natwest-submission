@@ -3,7 +3,10 @@
   "buildCommand": "cd web && npx vite build",
   "outputDirectory": "web/dist",
   "framework": null,
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index" }],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/meet", "destination": "/index.html" }
+  ],
   "functions": {
     "api/index.py": { "maxDuration": 60, "includeFiles": "{backend,contracts}/**" }
   }

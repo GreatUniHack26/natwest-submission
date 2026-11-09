@@ -1,0 +1,57 @@
+.meet { display: flex; flex-direction: column; gap: 0; padding-bottom: 64px; background: var(--c-page); }
+
+.meet-hero { background: var(--c-deep); color: #fff; padding: clamp(28px, 5vw, 64px) 16px clamp(32px, 5vw, 56px); }
+.meet-hero-in { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
+.meet-kicker {
+  background: var(--c-purple); color: var(--c-lavender); border-radius: var(--radius-pill);
+  padding: 6px 14px; font: 700 13px var(--font-body);
+}
+.meet-hero h1 {
+  font: 800 clamp(30px, 5vw, 54px)/1.1 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; margin: 0;
+}
+.meet-hero p { font-size: clamp(16px, 1.6vw, 19px); line-height: 1.55; color: var(--c-lavender); max-width: 680px; margin: 0; }
+
+.meet-video {
+  position: relative; width: 100%; margin-top: 12px; border-radius: var(--radius); overflow: hidden;
+  background: #000; aspect-ratio: 16 / 9; box-shadow: var(--shadow-float);
+}
+.meet-video video { width: 100%; height: 100%; display: block; object-fit: contain; }
+.meet-play {
+  position: absolute; inset: 0; margin: auto; width: fit-content; height: fit-content;
+  display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border: 0; cursor: pointer;
+  border-radius: var(--radius-pill); background: #fff; color: var(--c-deep);
+  font: 800 16px var(--font-display); box-shadow: var(--shadow-float);
+  transition: transform 160ms var(--ease-out);
+}
+.meet-video:has(.meet-play)::after { content: ""; position: absolute; inset: 0; background: rgb(20 4 30 / 45%); pointer-events: none; }
+.meet-play { z-index: 1; white-space: nowrap; }
+@media (max-width: 560px) { .meet-play { padding: 10px 16px; font-size: 14px; } }
+.meet-play:hover { transform: scale(1.04); }
+.meet-play:focus-visible { outline: 3px solid var(--c-lavender); outline-offset: 3px; }
+.meet-play span { font-size: 14px; }
+
+.meet-section { width: 100%; max-width: 1012px; margin: 0 auto; padding: clamp(28px, 4vw, 48px) 16px 0; box-sizing: border-box; }
+.meet-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.meet-head h2 { font: 800 clamp(22px, 2.6vw, 30px)/1.2 var(--font-display); color: var(--c-deep); margin: 0; }
+.meet-head p { font-size: 16px; line-height: 1.5; color: var(--muted); margin: 0; max-width: 720px; }
+
+.meet-home { border-radius: var(--radius); overflow: hidden; background: var(--c-page); }
+
+.meet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.meet-card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-card); padding: 18px; }
+.meet-card h3 { font: 800 17px/1.3 var(--font-display); color: var(--c-deep); margin: 0 0 6px; }
+.meet-card p { font-size: 15px; line-height: 1.5; color: var(--muted); margin: 0; }
+
+.meet-stack { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-card); margin: 0; padding: 4px 18px; }
+.meet-stack > div { display: grid; grid-template-columns: 160px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.meet-stack > div:last-child { border-bottom: 0; }
+.meet-stack dt { font: 800 15px var(--font-display); color: var(--c-purple); }
+.meet-stack dd { margin: 0; font-size: 15px; line-height: 1.5; }
+@media (max-width: 560px) { .meet-stack > div { grid-template-columns: 1fr; gap: 4px; } }
+
+.meet-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.meet-btn {
+  display: inline-flex; align-items: center; padding: 12px 20px; border-radius: var(--radius-pill);
+  background: var(--c-purple); color: #fff; font: 800 15px var(--font-display); text-decoration: none;
+}
+.meet-btn--ghost { background: #fff; color: var(--c-purple); border: 2px solid var(--c-purple); }
