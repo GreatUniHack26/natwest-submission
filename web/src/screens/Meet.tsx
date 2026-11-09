@@ -103,12 +103,6 @@ export default function Meet({ home }: { home: ReactNode }) {
             <div key={k}><dt>{k}</dt><dd>{v}</dd></div>
           ))}
         </dl>
-        <div className="meet-links">
-          <a className="meet-btn" href="/#start">Try the full app</a>
-          <a className="meet-btn meet-btn--ghost" href="https://github.com/GreatUniHack26/natwest-submission" target="_blank" rel="noreferrer">
-            Code on GitHub
-          </a>
-        </div>
       </section>
     </div>
   );
